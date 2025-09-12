@@ -232,6 +232,10 @@ setMethod("coef", "unmarkedEstimate",
     coefs
 })
 
+setMethod("coef", "unmarkedEstimateList", 
+          function(object, type, altNames = TRUE, fixexOnly = TRUE, ...){
+  object@estimates[[type]]@estimates
+})
 
 setMethod("vcov", "unmarkedEstimate",
     function(object, fixedOnly=TRUE, ...)
@@ -365,6 +369,7 @@ get_TMB_inputs <- function(formulas, dm, par_inds, umf, ...){
   names(Zs) <- paste0("Z_", mods)
 
   dat <- c(list(y = dm$y), ngv, ngroup, dms, Zs, list(...))
+  dat[sapply(dat, is.null)] <- NULL # erase from list
 
   if(any(grepl("offset", names(dm)))){
     dat <- c(dat, dm[paste0("offset_", mods)])
