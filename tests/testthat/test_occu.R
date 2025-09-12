@@ -438,9 +438,9 @@ test_that("occu can handle random effects",{
   expect_equal(nrow(ci), 2)
 
   # Check custom initial values
-  expect_equal(fm@TMB$starts_order[1], "beta_det")
+  expect_equal(fm@TMB$starts_order[1], "beta_state")
   fmi <- occu(~1~cov1 + (1|site_id), umf, starts=c(10,0,0,0))
-  expect_equivalent(fmi@TMB$par["beta_det"], 10)
+  expect_equivalent(fmi@TMB$par["beta_state"], 10)
   expect_error(occu(~1~cov1 + (1|site_id), umf, starts=rep(0,3)))
   expect_error(occu(~1~cov1 + (1|site_id), umf, starts=c(100,0,0,0)))
 

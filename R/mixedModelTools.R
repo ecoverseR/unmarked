@@ -103,7 +103,7 @@ split_formula <- function(formula){
           })
   p1 <- as.formula(char[[2]])
   p2 <- as.formula(paste("~", char[[3]]))
-  list(p1, p2)
+  list(det = p1, state = p2)
 }
 
 is_tmb_fit <- function(mod){
