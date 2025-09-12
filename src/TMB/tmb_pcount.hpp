@@ -61,9 +61,15 @@ Type tmb_pcount(objective_function<Type>* obj) {
   PARAMETER_VECTOR(b_det);
   PARAMETER_VECTOR(lsigma_det);
 
-  PARAMETER_VECTOR(beta_scale);
-  Type scale = 0;
-  if(mixture > 1) scale = beta_scale(0);
+  //Second parameter of abundance distribution if needed
+  Type par2 = 0;
+  if(mixture == 2){ //NB
+    PARAMETER_VECTOR(beta_alpha);
+    par2 = beta_alpha(0);
+  } else if(mixture == 3){ //ZIP
+    PARAMETER_VECTOR(beta_psi);
+    par2 = beta_psi(0);
+  }
 
   Type loglik = 0.0;
   int M = y.rows(); //# of sites
@@ -87,7 +93,7 @@ Type tmb_pcount(objective_function<Type>* obj) {
     vector<Type> ysub = y.row(i);
     vector<Type> psub = p.segment(pstart, J);
     loglik -= lp_site_pcount(ysub, mixture, lam(i), psub,
-                             scale, K, Kmin(i));
+                             par2, K, Kmin(i));
   }
 
   return loglik;

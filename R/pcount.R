@@ -1,8 +1,8 @@
 
 #' Fit the N-mixture point count model
 
-pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
-                   method = "BFGS", se = TRUE,
+pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), 
+                   starts = NULL, method = "BFGS", se = TRUE,
                    engine = c("C", "R", "TMB"), threads = 1, ...)
 {
 
@@ -24,16 +24,21 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
     dm <- getDesign(data, formulas)
     y <- dm$y
 
-    # Set up parameter names and indices---------------------------------------
-    lamParms <- colnames(dm$X_state)
-    detParms <- colnames(dm$X_det)
-    nDP <- ncol(dm$X_det)
-    nAP <- ncol(dm$X_state)
-    lamIdx <- 1:nAP
-    pIdx <- (nAP+1):(nAP+nDP)
-    n_param <- c(nAP, nDP, ifelse(mixture != "P", 1, 0))
-    nP <- sum(n_param)
-    nbParm <- switch(mixture, NB = "alpha", ZIP = "psi", P = character(0))
+    # Set up submodels-----------------------------------------------------------
+    state <- unmarkedEstimate("Abundance", short.name = "lam", invlink="exp")
+    det <- unmarkedEstimate("Detection", short.name = "p", invlink="logistic")
+    estimateList <- unmarkedEstimateList(list(state=state,det=det))
+
+    if(identical(mixture,"NB")) {
+      estimateList@estimates$alpha <- 
+        unmarkedEstimate(name="Dispersion", short.name = "alpha", invlink = "exp")
+    } else if(identical(mixture,"ZIP")) {
+      estimateList@estimates$psi <- 
+        unmarkedEstimate(name="Zero-inflation", short.name = "psi", invlink = "logistic")
+    }
+
+    # Set up parameter names and indices-----------------------------------------
+    par_inds <- get_parameter_inds(estimateList, dm)
 
     # Handle K (number of possible abundance values to marginalize over)-------
     if(missing(K)) {
@@ -59,8 +64,8 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
         ijk <- expand.grid(k = 0:K, j = 1:J, i = 1:M)
         ijk.to.ikj <- with(ijk, order(i, k, j))
         nll <- function(parms) {
-            theta.i <- exp(dm$X_state %*% parms[lamIdx] + dm$offset_state)
-            p.ij <- plogis(dm$X_det %*% parms[pIdx] + dm$offset_det)
+            theta.i <- exp(dm$X_state %*% parms[par_inds$state] + dm$offset_state)
+            p.ij <- plogis(dm$X_det %*% parms[par_inds$det] + dm$offset_det)
             theta.ik <- rep(theta.i, each = K + 1)
             p.ijk <- rep(p.ij, each = K + 1)
 
@@ -74,7 +79,7 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
                 f.ik <- dpois(k.ik,theta.ik)
             }
             else if (identical(mixture,"NB")){
-                f.ik <- dnbinom(k.ik, mu = theta.ik, size = exp(parms[nP]))
+                f.ik <- dnbinom(k.ik, mu = theta.ik, size = exp(parms[par_inds$alpha]))
             }
             dens.i.mat <- matrix(f.ik * g.ik, M, K + 1, byrow = TRUE)
             dens.i <- rowSums(dens.i.mat)  # sum over the K
@@ -82,6 +87,8 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
             -sum(log(dens.i))
       }
     } else if(identical(engine, "C")) {
+        n_param <- sapply(par_inds, length)
+        if(length(n_param) == 2) n_param <- c(n_param, 0)
         nll <- function(parms) {
           nll_pcount(parms, n_param, y, dm$X_state, dm$X_det, dm$offset_state, dm$offset_det, 
                      K, Kmin, mixture_code, threads)
@@ -90,103 +97,26 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
 
     # Fit model in C or R------------------------------------------------------
     if(engine %in% c("C","R")){
-      if(missing(starts)) starts <- rep(0, nP)
-      if(length(starts) != nP)
-        stop(paste("The number of starting values should be", nP))
 
-      fm <- optim(starts, nll, method=method, hessian=se, ...)
-
-      ests <- fm$par
-      names(ests) <- c(lamParms, detParms, nbParm)
-      covMat <- invertHessian(fm, nP, se)
-      fmAIC <- 2 * fm$value + 2 * nP
-      tmb_mod <- NULL
-
-      # Organize fixed-effect estimates
-      state_coef <- list(ests=ests[lamIdx], cov=as.matrix(covMat[lamIdx,lamIdx]))
-      det_coef <- list(ests=ests[pIdx], cov=as.matrix(covMat[pIdx, pIdx]))
-
-      if(mixture %in% c("NB", "ZIP")){
-        scale_coef <- list(ests=ests[nP], cov=as.matrix(covMat[nP,nP]))
-      }
-
-      # No random effects in C or R engines
-      state_rand_info <- det_rand_info <- list()
+      fit <- fit_optim(nll, starts, method, se, estimateList, par_inds, ...)
 
     # Fit model in TMB---------------------------------------------------------
     } else if(engine == "TMB"){
 
       # Set up TMB input data
-      obs_all <- add_covariates(obsCovs(data), siteCovs(data), length(getY(data)))
-      inps <- get_ranef_inputs(formulas, list(det=obs_all, state=siteCovs(data)),
-                               list(dm$X_det, dm$X_state), dm[c("Z_det","Z_state")])
+      tmb_inputs <- get_TMB_inputs(formulas, dm, par_inds, data, 
+                                   K=K, Kmin=Kmin, mixture=mixture_code)
 
-      tmb_dat <- c(list(y=y, K=K, Kmin=Kmin, mixture=mixture_code,
-                      offset_state=dm$offset_state, offset_det=dm$offset_det), inps$data)
-
-      tmb_param <- c(inps$pars, list(beta_scale=rep(0,0)))
-      if(mixture_code > 1) tmb_param$beta_scale <- rep(0,1)
-
-      # Fit model in TMB
-      if(missing(starts)) starts <- NULL
-      tmb_out <- fit_TMB("tmb_pcount", tmb_dat, tmb_param, inps$rand_ef,
-                         starts=starts, method, ...)
-      tmb_mod <- tmb_out$TMB
-      fm <- tmb_out$opt
-      fmAIC <- tmb_out$AIC
-      nll <- tmb_mod$fn
-
-      # Organize fixed-effect estimate from TMB output
-      state_coef <- get_coef_info(tmb_out$sdr, "state", lamParms, lamIdx)
-      det_coef <- get_coef_info(tmb_out$sdr, "det", detParms, pIdx)
-
-      if(mixture_code > 1){
-        scale_coef <- get_coef_info(tmb_out$sdr, "scale", nbParm, nP)
-      }
-
-      # Organize random-effect estimates from TMB output
-      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", formulas$state, siteCovs(data))
-      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", formulas$det, obs_all)
-
-    }
-
-    # Create unmarkedEstimates-------------------------------------------------
-    stateEstimates <- unmarkedEstimate(
-        name="Abundance", short.name="lam",
-        estimates = state_coef$ests, covMat = state_coef$cov, fixed=1:nAP,
-        invlink = "exp", invlinkGrad = "exp",
-        randomVarInfo=state_rand_info)
-
-    detEstimates <- unmarkedEstimate(
-        name = "Detection", short.name = "p",
-        estimates = det_coef$ests, covMat = det_coef$cov, fixed=1:nDP,
-        invlink = "logistic", invlinkGrad = "logistic.grad",
-        randomVarInfo=det_rand_info)
-
-    estimateList <- unmarkedEstimateList(list(state=stateEstimates,
-                                              det=detEstimates))
-
-    if(identical(mixture,"NB")) {
-        estimateList@estimates$alpha <- unmarkedEstimate(
-            name="Dispersion", short.name = "alpha",
-            estimates = scale_coef$ests, covMat = scale_coef$cov, fixed=1,
-            invlink = "exp", invlinkGrad = "exp", randomVarInfo=list())
-    }
-
-    if(identical(mixture,"ZIP")) {
-        estimateList@estimates$psi <- unmarkedEstimate(
-            name="Zero-inflation", short.name = "psi",
-            estimates = scale_coef$ests, covMat = scale_coef$cov, fixed=1,
-            invlink = "logistic", invlinkGrad = "logistic.grad", randomVarInfo=list())
+      # Fit model with TMB
+      fit <- fit_TMB2("tmb_pcount", starts, method, estimateList, par_inds,
+                      tmb_inputs, data, ...)
     }
 
     # Create unmarkedFit object------------------------------------------------
-    umfit <- new("unmarkedFitPCount", fitType="pcount", call=match.call(),
-                 formula = formula, formlist = formulas, data = data,
-                 sitesRemoved = dm$removed.sites,
-                 estimates = estimateList, AIC = fmAIC, opt = fm,
-                 negLogLike = fm$value,
-                 nllFun = nll, K = K, mixture = mixture, TMB=tmb_mod)
-
-    return(umfit)
+    new("unmarkedFitPCount", fitType="pcount", call=match.call(),
+        formula = formula, formlist = formulas, data = data,
+        sitesRemoved = dm$removed.sites,
+        estimates = fit$estimate_list, AIC = fit$AIC, opt = fit$opt,
+        negLogLike = fit$opt$value,
+        nllFun = fit$nll, K = K, mixture = mixture, TMB=fit$TMB)
 }
