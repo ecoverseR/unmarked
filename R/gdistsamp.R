@@ -3,164 +3,139 @@ gdistsamp <- function(lambdaformula, phiformula, pformula, data,
     keyfun=c("halfnorm", "exp", "hazard", "uniform"),
     output=c("abund", "density"), unitsOut=c("ha", "kmsq"),
     mixture=c("P", "NB", 'ZIP'), K, starts, method = "BFGS", se = TRUE, engine=c("C","R"),
-    rel.tol=1e-4, threads=1, ...)
-{
-if(!is(data, "unmarkedFrameGDS"))
-    stop("Data is not of class unmarkedFrameGDS.")
+    rel.tol=1e-4, threads=1, ...){
+  
+  if(!is(data, "unmarkedFrameGDS"))
+      stop("Data is not of class unmarkedFrameGDS.")
 
-engine <- match.arg(engine, c("C", "R"))
-keyfun <- match.arg(keyfun)
-if(!keyfun %in% c("halfnorm", "exp", "hazard", "uniform"))
+  engine <- match.arg(engine, c("C", "R"))
+  keyfun <- match.arg(keyfun)
+  if(!keyfun %in% c("halfnorm", "exp", "hazard", "uniform"))
     stop("keyfun must be 'halfnorm', 'exp', 'hazard', or 'uniform'")
-output <- match.arg(output)
-unitsOut <- match.arg(unitsOut)
-db <- data@dist.breaks
-w <- diff(db)
-tlength <- data@tlength
-survey <- data@survey
-unitsIn <- data@unitsIn
-mixture <- match.arg(mixture)
+  output <- match.arg(output)
+  unitsOut <- match.arg(unitsOut)
+  db <- data@dist.breaks
+  w <- diff(db)
+  tlength <- data@tlength
+  survey <- data@survey
+  unitsIn <- data@unitsIn
+  mixture <- match.arg(mixture)
 
-formulas <- list(lambda = lambdaformula, phi = phiformula, det = pformula)
-check_no_support(formulas)
-D <- getDesign(data, formulas)
-y <- D$y  # MxJT
+  formulas <- list(lambda = lambdaformula, phi = phiformula, det = pformula)
+  check_no_support(formulas)
+  D <- getDesign(data, formulas)
+  y <- D$y  # MxJT
 
-M <- nrow(y)
-T <- data@numPrimary
-R <- ncol(y)
-J <- R / T
+  M <- nrow(y)
+  T <- data@numPrimary
+  R <- ncol(y)
+  J <- R / T
 
-y <- array(y, c(M, J, T))
-y <- aperm(y, c(1,3,2))
-yt <- apply(y, 1:2, function(x) {
+  y <- array(y, c(M, J, T))
+  y <- aperm(y, c(1,3,2))
+  yt <- apply(y, 1:2, function(x) {
     if(all(is.na(x)))
         return(NA)
     else return(sum(x, na.rm=TRUE))
     })
 
-minK <- max(yt, na.rm=TRUE)
-if(missing(K) || is.null(K)){
-  K <- minK + 100
-} else {
-  if(K < minK){
-    stop("K should be larger than the max observed abundance, ", minK, call.=FALSE)
+  minK <- max(yt, na.rm=TRUE)
+  if(missing(K) || is.null(K)){
+    K <- minK + 100
+  } else {
+    if(K < minK){
+      stop("K should be larger than the max observed abundance, ", minK, call.=FALSE)
+    }
   }
-}
-k <- 0:K
-lk <- length(k)
+  k <- 0:K
+  lk <- length(k)
 
-u <- a <- matrix(NA, M, J)
-switch(survey,
-    line = {
-        for(i in 1:M) {
-            a[i,] <- tlength[i] * w
-            u[i,] <- a[i,] / sum(a[i,])
-            }
-        },
-    point = {
-        for(i in 1:M) {
-            a[i, 1] <- pi*db[2]^2
-            for(j in 2:J)
-                a[i, j] <- pi*db[j+1]^2 - sum(a[i, 1:(j-1)])
-                u[i,] <- a[i,] / sum(a[i,])
-            }
-        })
-switch(survey,
-    line = A <- rowSums(a) * 2,
-    point = A <- rowSums(a))
-switch(unitsIn,
-    m = A <- A / 1e6,
-    km = A <- A)
-switch(unitsOut,
-    ha = A <- A * 100,
-    kmsq = A <- A)
+  ua <- getUA(data)
+  a <- ua$a; u <- ua$u
+  A <- get_ds_area(data, unitsOut)
+  if(output == "abund") A <- rep(1, length(A))
+  if(length(D$removed.sites) > 0){
+    a <- a[-D$removed.sites,,drop=FALSE]
+    u <- u[-D$removed.sites,,drop=FALSE]
+    A <- A[-D$removed.sites]
+  }
 
+  # Set up submodels
+  estimateList <- unmarkedEstimateList(list(
+    lambda = unmarkedEstimate(name = "Abundance", short.name="lambda", invlink="exp")
+  ))
 
-lamPars <- colnames(D$X_lambda)
-if(T==1) {
-    phiPars <- character(0)
-    nPP <- 0
-    }
-else {
-    phiPars <- colnames(D$X_phi)
-    nPP <- ncol(D$X_phi)
-    }
-if(identical(keyfun, "uniform")) {
-    nDP <- 0
-    detPars <- character(0)
-    }
-else {
-    nDP <- ncol(D$X_det)
-    detPars <- colnames(D$X_det)
-    }
-if(identical(keyfun, "hazard")) {
-    nSP <- 1
-    scalePar <- "scale"
-    }
-else {
-    nSP <- 0
-    scalePar <- character(0)
-    }
-if(identical(mixture, "NB")) {
-    nOP <- 1
-    nbPar <- "alpha"
-} else if(identical(mixture, "ZIP")) {
-    nOP <- 1
-    nbPar <- "psi"
-} else {
-    nOP <- 0
-    nbPar <- character(0)
-}
+  if(T>1){
+    estimateList@estimates$phi <- 
+      unmarkedEstimate(name = "Availability", short.name = "phi", invlink = "logistic")
+  }
 
-nLP <- ncol(D$X_lambda)
-nP  <- nLP + nPP + nDP + nSP + nOP
+  if(keyfun != "uniform"){
+    estimateList@estimates$det <- 
+      unmarkedEstimate(name = "Detection", short.name = "p", invlink = "exp")
+  }
 
-cp <- array(as.numeric(NA), c(M, T, J+1))
-g <- matrix(as.numeric(NA), M, lk)
+  if(keyfun == "hazard"){
+    estimateList@estimates$scale <- 
+      unmarkedEstimate(name = "Hazard-rate(scale)", short.name = "scale", invlink = "exp")
+  }
 
-lfac.k <- lgamma(k+1)
-kmyt <- array(NA, c(M, T, lk))
-lfac.kmyt <- array(0, c(M, T, lk))
-fin <- matrix(NA, M, lk)
-naflag <- array(NA, c(M, T, J))
-for(i in 1:M) {
+  if(mixture == "NB"){
+    estimateList@estimates$alpha <- 
+      unmarkedEstimate(name = "Dispersion", short.name = "alpha", invlink = "exp")
+  } else if(mixture == "ZIP"){
+    estimateList@estimates$psi <- 
+      unmarkedEstimate(name="Zero-inflation", short.name = "psi", invlink = "logistic")
+  }
+
+  # Set up parameter names and indices
+  par_inds <- get_parameter_inds(estimateList, D)
+  
+  cp <- array(as.numeric(NA), c(M, T, J+1))
+  g <- matrix(as.numeric(NA), M, lk)
+
+  lfac.k <- lgamma(k+1)
+  kmyt <- array(NA, c(M, T, lk))
+  lfac.kmyt <- array(0, c(M, T, lk))
+  fin <- matrix(NA, M, lk)
+  naflag <- array(NA, c(M, T, J))
+  for(i in 1:M) {
     fin[i, ] <- k - max(yt[i,], na.rm=TRUE) >= 0
     for(t in 1:T) {
-        naflag[i,t,] <- is.na(y[i,t,])
-        if(!all(naflag[i,t,])) {
-            kmyt[i,t,] <- k - yt[i,t]
-            lfac.kmyt[i, t, fin[i,]] <- lgamma(kmyt[i, t, fin[i,]] + 1)
-            }
-        }
+      naflag[i,t,] <- is.na(y[i,t,])
+      if(!all(naflag[i,t,])) {
+        kmyt[i,t,] <- k - yt[i,t]
+        lfac.kmyt[i, t, fin[i,]] <- lgamma(kmyt[i, t, fin[i,]] + 1)
+      }
     }
+  }
 
-switch(keyfun,
-halfnorm = {
-    altdetParms <- paste("sigma", colnames(D$X_det), sep="")
-    if(missing(starts)) {
-        starts <- rep(0, nP)
-        starts[nLP+nPP+1] <- log(max(db))
-        }
+  switch(keyfun,
+    halfnorm = {
+      altdetParms <- paste("sigma", colnames(D$X_det), sep="")
+      if(missing(starts)) {
+        starts <- rep(0, max(unlist(par_inds)))
+        starts[par_inds$det[1]] <- log(max(db))
+      }
 
-    nll_R <- function(pars) {
-        lambda <- exp(D$X_lambda %*% pars[1:nLP] + D$offset_lambda)
+      nll_R <- function(pars) {
+        lambda <- exp(D$X_lambda %*% pars[par_inds$lambda] + D$offset_lambda)
         if(identical(output, "density"))
             lambda <- lambda * A
 
         if(T==1)
             phi <- matrix(1, M, T)
         else {
-            phi <- plogis(D$X_phi %*% pars[(nLP+1):(nLP+nPP)] + D$offset_phi)
+            phi <- plogis(D$X_phi %*% pars[par_inds$phi] + D$offset_phi)
             phi <- matrix(phi, M, T, byrow=TRUE)
             }
-        sigma <- exp(D$X_det %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)]+D$offset_det)
+        sigma <- exp(D$X_det %*% pars[par_inds$det]+D$offset_det)
         sigma <- matrix(sigma, M, T, byrow=TRUE)
 
         switch(mixture,
             P = f <- sapply(k, function(x) dpois(x, lambda)),
-            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[nP]))),
-            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[nP])))
+            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[par_inds$alpha]))),
+            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[par_inds$psi])))
         )
         for(i in 1:M) {
             mn <- matrix(0, lk, T)
@@ -206,30 +181,30 @@ halfnorm = {
         -sum(log(ll))
         }
     },
-exp = {
-    altdetParms <- paste("rate", colnames(D$X_det), sep="")
-    if(missing(starts)) {
-        starts <- rep(0, nP)
-        starts[nLP+nPP+1] <- log(max(db))
-        }
+    exp = {
+      altdetParms <- paste("rate", colnames(D$X_det), sep="")
+      if(missing(starts)) {
+        starts <- rep(0, max(unlist(par_inds)))
+        starts[par_inds$det[1]] <- log(max(db))
+      }
 
-    nll_R <- function(pars) {
-        lambda <- exp(D$X_lambda %*% pars[1:nLP] + D$offset_lambda)
+      nll_R <- function(pars) {
+        lambda <- exp(D$X_lambda %*% pars[par_inds$lambda] + D$offset_lambda)
         if(identical(output, "density"))
             lambda <- lambda * A
         if(T==1)
             phi <- matrix(1, M, T)
         else {
-            phi <- plogis(D$X_phi %*% pars[(nLP+1):(nLP+nPP)] + D$offset_phi)
+            phi <- plogis(D$X_phi %*% pars[par_inds$phi] + D$offset_phi)
             phi <- matrix(phi, M, T, byrow=TRUE)
             }
-        rate <- exp(D$X_det %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)] + D$offset_det)
+        rate <- exp(D$X_det %*% pars[par_inds$det] + D$offset_det)
         rate <- matrix(rate, M, T, byrow=TRUE)
 
         switch(mixture,
             P = f <- sapply(k, function(x) dpois(x, lambda)),
-            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[nP]))),
-            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[nP])))
+            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[par_inds$alpha]))),
+            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[par_inds$psi])))
         )
         for(i in 1:M) {
             mn <- matrix(0, lk, T)
@@ -276,31 +251,31 @@ exp = {
         -sum(log(ll))
         }
     },
-hazard = {
-    altdetParms <- paste("shape", colnames(D$X_det), sep="")
-    if(missing(starts)) {
-        starts <- rep(0, nP)
-        }
-    nll_R <- function(pars) {
-        lambda <- exp(D$X_lambda %*% pars[1:nLP] + D$offset_lambda)
+    hazard = {
+      altdetParms <- paste("shape", colnames(D$X_det), sep="")
+      if(missing(starts)) {
+        starts <- rep(0, max(unlist(par_inds)))
+      }
+      nll_R <- function(pars) {
+        lambda <- exp(D$X_lambda %*% pars[par_inds$lambda] + D$offset_lambda)
         if(identical(output, "density"))
             lambda <- lambda * A
 
         if(T==1)
             phi <- matrix(1, M, T)
         else {
-            phi <- plogis(D$X_phi %*% pars[(nLP+1):(nLP+nPP)] + D$offset_phi)
+            phi <- plogis(D$X_phi %*% pars[par_inds$phi] + D$offset_phi)
             phi <- matrix(phi, M, T, byrow=TRUE)
             }
-        shape <- exp(D$X_det %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)]+D$offset_det)
+        shape <- exp(D$X_det %*% pars[par_inds$det]+D$offset_det)
         shape <- matrix(shape, M, T, byrow=TRUE)
 
-        scale <- exp(pars[nLP+nPP+nDP+1])
+        scale <- exp(pars[par_inds$scale])
 
         switch(mixture,
             P = f <- sapply(k, function(x) dpois(x, lambda)),
-            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[nP]))),
-            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[nP])))
+            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[par_inds$alpha]))),
+            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[par_inds$psi])))
         )
         for(i in 1:M) {
             mn <- matrix(0, lk, T)
@@ -346,25 +321,25 @@ hazard = {
         -sum(log(ll))
         }
     },
-uniform = {
-    if(missing(starts)) {
-        starts <- rep(0, nP)
-        }
-    nll_R <- function(pars) {
-        lambda <- exp(D$X_lambda %*% pars[1:nLP] + D$offset_lambda)
+    uniform = {
+      if(missing(starts)) {
+        starts <- rep(0, max(unlist(par_inds)))
+      }
+      nll_R <- function(pars) {
+        lambda <- exp(D$X_lambda %*% pars[par_inds$lambda] + D$offset_lambda)
         if(identical(output, "density"))
             lambda <- lambda * A
         if(T==1)
             phi <- matrix(1, M, T)
         else {
-            phi <- plogis(D$X_phi %*% pars[(nLP+1):(nLP+nPP)] + D$offset_phi)
+            phi <- plogis(D$X_phi %*% pars[par_inds$phi] + D$offset_phi)
             phi <- matrix(phi, M, T, byrow=TRUE)
             }
         p <- 1
         switch(mixture,
             P = f <- sapply(k, function(x) dpois(x, lambda)),
-            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[nP]))),
-            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[nP])))
+            NB = f <- sapply(k, function(x) dnbinom(x, mu=lambda, size=exp(pars[par_inds$alpha]))),
+            ZIP = f <- sapply(k, function(x) dzip(rep(x, length(lambda)), lambda=lambda, psi=plogis(pars[par_inds$psi])))
         )
         for(i in 1:M) {
             mn <- matrix(0, lk, T)
@@ -385,91 +360,41 @@ uniform = {
         ll <- rowSums(f*g)
         -sum(log(ll))
     }
-})
+  })
 
-if(engine =="C"){
-  long_format <- function(x){
-    out <- matrix(aperm(x,c(1,3,2)),nrow=nrow(x),ncol=dim(x)[2]*dim(x)[3])
-    as.vector(t(out))
+  if(engine =="C"){
+    long_format <- function(x){
+      out <- matrix(aperm(x,c(1,3,2)),nrow=nrow(x),ncol=dim(x)[2]*dim(x)[3])
+      as.vector(t(out))
+    }
+    y_long <- long_format(y)
+    # Vectorize these arrays as using arma::subcube sometimes crashes
+    kmytC <- as.vector(aperm(kmyt, c(3,2,1)))
+    lfac.kmytC <- as.vector(aperm(lfac.kmyt, c(3,2,1)))
+    if(output!='density'){
+      A <- rep(1, M)
+    }
+    mixture_code <- switch(mixture, P={1}, NB={2}, ZIP={3})
+    # TODO: use more consistent pattern here
+    n_param <- c(length(par_inds$lambda), length(par_inds$phi), length(par_inds$det),
+                 length(par_inds$scale), length(par_inds$alpha)+length(par_inds$psi))
+    Kmin <- apply(yt, 1, max, na.rm=TRUE)
+
+    nll <- function(params){
+      nll_gdistsamp(params, n_param, y_long, mixture_code, keyfun, survey,
+                    D$X_lambda, D$offset_lambda, A, D$X_phi, D$offset_phi, D$X_det, D$offset_det,
+                    db, a, t(u), w, k, lfac.k, lfac.kmytC, kmytC, Kmin, threads)
+    }
+
+  } else {
+    nll <- nll_R
   }
-  y_long <- long_format(y)
-  # Vectorize these arrays as using arma::subcube sometimes crashes
-  kmytC <- as.vector(aperm(kmyt, c(3,2,1)))
-  lfac.kmytC <- as.vector(aperm(lfac.kmyt, c(3,2,1)))
-  if(output!='density'){
-    A <- rep(1, M)
-  }
-  mixture_code <- switch(mixture, P={1}, NB={2}, ZIP={3})
-  n_param <- c(nLP, nPP, nDP, nSP, nOP)
-  Kmin <- apply(yt, 1, max, na.rm=TRUE)
 
-  nll <- function(params){
-    nll_gdistsamp(params, n_param, y_long, mixture_code, keyfun, survey,
-                  D$X_lambda, D$offset_lambda, A, D$X_phi, D$offset_phi, D$X_det, D$offset_det,
-                  db, a, t(u), w, k, lfac.k, lfac.kmytC, kmytC, Kmin, threads)
-  }
-
-} else {
-  nll <- nll_R
+  fit <- fit_optim(nll, starts, method, se, estimateList, par_inds, ...)
+  
+  new("unmarkedFitGDS", fitType = "gdistsamp", call = match.call(), 
+      formlist = formulas, data = data, estimates = fit$estimate_list, 
+      sitesRemoved = D$removed.sites, AIC = fit$AIC, opt = fit$opt, 
+      negLogLike = fit$opt$value, nllFun = fit$nll,
+      mixture=mixture, K=K, keyfun=keyfun, unitsOut=unitsOut, output=output)
 }
-#return(nll(starts))
-fm <- optim(starts, nll, method = method, hessian = se, ...)
-covMat <- invertHessian(fm, nP, se)
-ests <- fm$par
-fmAIC <- 2 * fm$value + 2 * nP
-
-names(ests) <- c(lamPars, phiPars, detPars, scalePar, nbPar)
-
-lamEstimates <- unmarkedEstimate(name = "Abundance", short.name = "lambda",
-    estimates = ests[1:nLP],
-    covMat = as.matrix(covMat[1:nLP, 1:nLP]), invlink = "exp",
-    invlinkGrad = "exp")
-estimateList <- unmarkedEstimateList(list(lambda=lamEstimates))
-
-if(T>1)
-    estimateList@estimates$phi <- unmarkedEstimate(name = "Availability",
-        short.name = "phi", estimates = ests[(nLP+1):(nLP+nPP)],
-        covMat = as.matrix(covMat[(nLP+1):(nLP+nPP), (nLP+1):(nLP+nPP)]),
-        invlink = "logistic", invlinkGrad = "logistic.grad")
-
-if(!identical(keyfun, "uniform"))
-    estimateList@estimates$det <- unmarkedEstimate(name = "Detection",
-        short.name = "p",
-        estimates = ests[(nLP+nPP+1):(nLP+nPP+nDP)],
-        covMat = as.matrix(
-            covMat[(nLP+nPP+1):(nLP+nPP+nDP), (nLP+nPP+1):(nLP+nPP+nDP)]),
-        invlink = "exp", invlinkGrad = "exp")
-
-if(identical(keyfun, "hazard"))
-    estimateList@estimates$scale <- unmarkedEstimate(
-        name = "Hazard-rate(scale)", short.name = "scale",
-        estimates = ests[(nLP+nPP+nDP+1):(nLP+nPP+nDP+1)],
-        covMat = covMat[(nLP+nPP+nDP+1):(nLP+nPP+nDP+1),
-                        (nLP+nPP+nDP+1):(nLP+nPP+nDP+1), drop=FALSE],
-        invlink = "exp", invlinkGrad = "exp")
-
-if(identical(mixture, "NB"))
-    estimateList@estimates$alpha <- unmarkedEstimate(name = "Dispersion",
-        short.name = "alpha", estimates = ests[nP],
-        covMat = as.matrix(covMat[nP, nP]), invlink = "exp",
-        invlinkGrad = "exp")
-
-if(identical(mixture,"ZIP")) {
-    estimateList@estimates$psi <- unmarkedEstimate(name="Zero-inflation",
-        short.name = "psi", estimates = ests[nP],
-        covMat=as.matrix(covMat[nP, nP]), invlink = "logistic",
-        invlinkGrad = "logistic.grad")
-}
-
-umfit <- new("unmarkedFitGDS", fitType = "gdistsamp",
-    call = match.call(), formlist = formulas,
-    data = data, estimates = estimateList, sitesRemoved = D$removed.sites,
-    AIC = fmAIC, opt = fm, negLogLike = fm$value, nllFun = nll,
-    mixture=mixture, K=K, keyfun=keyfun, unitsOut=unitsOut, output=output)
-
-return(umfit)
-}
-
-
-
-

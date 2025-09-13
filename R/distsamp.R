@@ -23,6 +23,11 @@ distsamp <- function(formula, data,
   a <- ua$a; u <- ua$u
   A <- get_ds_area(data, unitsOut)
   if(output == "abund") A <- rep(1, length(A))
+  if(length(dm$removed.sites) > 0){
+    a <- a[-dm$removed.sites,,drop=FALSE]
+    u <- u[-dm$removed.sites,,drop=FALSE]
+    A <- A[-dm$removed.sites]
+  }
 
   # Distance sampling design info
   db <- data@dist.breaks
