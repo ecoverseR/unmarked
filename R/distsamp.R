@@ -1,101 +1,61 @@
 
 distsamp <- function(formula, data,
     keyfun=c("halfnorm", "exp", "hazard", "uniform"),
-    output=c("density", "abund"), unitsOut=c("ha", "kmsq"), starts,
+    output=c("density", "abund"), unitsOut=c("ha", "kmsq"), starts = NULL,
     method="BFGS", se = TRUE, engine = c("C", "R", "TMB"),
-    rel.tol=0.001, ...)
-{
+    rel.tol=0.001, ...){
 
-    # Check arguments
-    engine <- match.arg(engine)
-    formulas <- split_formula(formula)
-    names(formulas) <- c("det", "state")
-    if(any(sapply(formulas, has_random))) engine <- "TMB"
-    keyfun <- match.arg(keyfun)
-    output <- match.arg(output)
-    unitsOut <- match.arg(unitsOut)
+  # Check arguments
+  engine <- match.arg(engine)
+  formulas <- split_formula(formula)
+  if(any(sapply(formulas, has_random))) engine <- "TMB"
+  keyfun <- match.arg(keyfun)
+  output <- match.arg(output)
+  unitsOut <- match.arg(unitsOut)
 
-    if(missing(starts)) starts <- NULL
+  #Generate design matrix
+  dm <- getDesign(data, formulas)
+  y <- dm$y
+  M <- nrow(y)
+  J <- ncol(y)
 
-    #Generate design matrix
-    dm <- getDesign(data, formulas)
-    y <- dm$y
-    M <- nrow(y)
-    J <- ncol(y)
+  ua <- getUA(data)
+  a <- ua$a; u <- ua$u
+  A <- get_ds_area(data, unitsOut)
+  if(output == "abund") A <- rep(1, length(A))
 
-    # Distance sampling design info
-    db <- data@dist.breaks
-    tlength <- data@tlength
-    survey <- data@survey
-    w <- diff(db)
-    unitsIn <- data@unitsIn
-    u <- a <- matrix(NA, M, J)
-    switch(survey,
-        line = {
-            for(i in 1:M) {
-                a[i,] <- tlength[i] * w
-                u[i,] <- a[i,] / sum(a[i,])
-                }
-            },
-        point = {
-            for(i in 1:M) {
-                a[i, 1] <- pi*db[2]^2
-                if(J > 1){
-                  for(j in 2:J){
-                    a[i, j] <- pi*db[j+1]^2 - sum(a[i, 1:(j-1)])
-                  }
-                }
-                u[i,] <- a[i,] / sum(a[i,])
-                }
-            })
-    switch(survey,
-        line = A <- rowSums(a) * 2,
-        point = A <- rowSums(a))
-    switch(unitsIn,
-        m = A <- A / 1e6,
-        km = A <- A)
-    switch(unitsOut,
-        ha = A <- A * 100,
-        kmsq = A <- A)
+  # Distance sampling design info
+  db <- data@dist.breaks
+  tlength <- data@tlength
+  survey <- data@survey
+  w <- diff(db)
+  unitsIn <- data@unitsIn
 
-    # Set up parameters
-    lamParms <- colnames(dm$X_state)
-    detParms <- colnames(dm$X_det)
-    scaleParms <- character(0)
-    nAP <- length(lamParms)
-    nDP <- length(detParms)
-    nP <- nAP + nDP
-    lamIdx <- 1:nAP
-    detIdx <- (nAP+1):nP
-    starts_default <- c(rep(0, nAP), log(max(db)), rep(0, nDP-1))
+  # Set up submodels
+  state_name <- switch(output, abund = "Abundance", density = "Density")
+  estimateList <- unmarkedEstimateList(list(
+    state = unmarkedEstimate(state_name, short.name = "lam", invlink="exp")
+  ))
+  if(keyfun != "uniform") {
+    estimateList@estimates$det <- 
+      unmarkedEstimate(name = "Detection", short.name = "p", invlink = "exp")
+  }
+  if(keyfun == "hazard"){
+    estimateList@estimates$scale <- 
+      unmarkedEstimate(name = "Hazard-rate(scale)", short.name = "p", invlink = "exp")
+  }
 
-    if(keyfun=="uniform"){
-      detParms <- character(0)
-      detIdx <- numeric(0)
-      starts_default <- rep(0, nAP)
-      nP <- nAP
-    }
-    if(keyfun=="exp"){
-      starts_default[(nAP+1)] <- 0
-      # maybe this should be default everywhere
-      if(engine == "TMB") starts_default[(nAP+1)] <- log(median(db))
-    }
-    if(keyfun=="hazard"){
-      nP <- nP + 1
-      scaleParms <- "scale"
-      starts_default[(nAP+1)] <- log(median(db))
-      starts_default <- c(starts_default, 1)
-    }
-    names(starts_default) <- c(lamParms, detParms, scaleParms)
+  # Set up parameter names and indices
+  par_inds <- get_parameter_inds(estimateList, dm)
 
-    if(engine=="R") {
+  if(engine=="R") {
 
     cp <- matrix(NA, M, J)
     switch(keyfun,
     halfnorm = {
         nll <- function(param) {
-            sigma <- drop(exp(dm$X_det %*% param[(nAP+1):nP] + dm$offset_det))
-            lambda <- drop(exp(dm$X_state %*% param[1:nAP] + dm$offset_state))
+            sigma <- drop(exp(dm$X_det %*% param[par_inds$det] + dm$offset_det))
+            lambda <- drop(exp(dm$X_state %*% param[par_inds$state] + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             for(i in 1:M) {
@@ -125,8 +85,8 @@ distsamp <- function(formula, data,
             }},
     exp = {
         nll <- function(param) {
-            rate <- drop(exp(dm$X_det %*% param[(nAP+1):nP] + dm$offset_det))
-            lambda <- drop(exp(dm$X_state %*% param[1:nAP] + dm$offset_state))
+            rate <- drop(exp(dm$X_det %*% param[par_inds$det] + dm$offset_det))
+            lambda <- drop(exp(dm$X_state %*% param[par_inds$state] + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             for(i in 1:M) {
@@ -161,9 +121,9 @@ distsamp <- function(formula, data,
             }},
     hazard = {
         nll <- function(param) {
-            shape <- drop(exp(dm$X_det %*% param[(nAP+1):(nP-1)] + dm$offset_det))
-            scale <- drop(exp(param[nP]))
-            lambda <- drop(exp(dm$X_state %*% param[1:nAP] + dm$offset_state))
+            shape <- drop(exp(dm$X_det %*% param[par_inds$det] + dm$offset_det))
+            scale <- drop(exp(param[par_inds$scale]))
+            lambda <- drop(exp(dm$X_state %*% param[par_inds$state] + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             for(i in 1:M) {
@@ -206,14 +166,14 @@ distsamp <- function(formula, data,
             -sum(ll)
             }
         })
-    } else if(engine=="C") {
+  } else if(engine=="C") {
         nll <- function(param) {
-            beta.lam <- param[1:nAP]
+            beta.lam <- param[par_inds$state]
             if(identical(keyfun, "hazard")) {
-                beta.sig <- param[(nAP+1):(nP-1)]
-                scale <- exp(param[nP])
+                beta.sig <- param[par_inds$det]
+                scale <- exp(param[par_inds$scale])
             } else {
-                beta.sig <- param[(nAP+1):nP]
+                beta.sig <- param[par_inds$det]
                 scale <- -99.0
             }
             lambda <- drop(exp(dm$X_state %*% beta.lam + dm$offset_state))
@@ -226,103 +186,50 @@ distsamp <- function(formula, data,
                   keyfun, survey
             )
         }
-    }
+  }
 
-    if(engine %in% c("C","R")){
-      if(is.null(starts)) starts <- starts_default
-      fm <- optim(starts, nll, method=method, hessian=se, ...)
-
-      ests <- fm$par
-      names(ests) <- c(lamParms, detParms, scaleParms)
-      covMat <- invertHessian(fm, nP, se)
-      fmAIC <- 2 * fm$value + 2 * nP
-      tmb_mod <- NULL
-
-      # Organize fixed-effect estimates
-      state_coef <- list(ests=ests[lamIdx], cov=as.matrix(covMat[lamIdx, lamIdx]))
-
-      if(keyfun != "uniform"){
-        det_coef <- list(ests=ests[detIdx], cov=as.matrix(covMat[detIdx, detIdx]))
-      }
-      if(keyfun == "hazard") {
-        scale_coef <- list(ests=ests[nP], cov=as.matrix(covMat[nP,nP]))
-      }
-
-      # No random effects in C or R engines
-      state_rand_info <- det_rand_info <- list()
-
-    } else if(engine == "TMB"){
-
-      # Set up TMB input data
-      if(output == "abund") A <- rep(1, length(A))
-      inps <- get_ranef_inputs(formulas, list(det=siteCovs(data), state=siteCovs(data)),
-                               list(dm$X_det, dm$X_state), dm[c("Z_det","Z_state")])
-
-      keyfun_type <- switch(keyfun, uniform={0}, halfnorm={1}, exp={2},
-                            hazard={3})
-      survey_type <- switch(survey, line={0}, point={1})
-      tmb_dat <- c(list(y=y, survey_type=survey_type, keyfun_type=keyfun_type,
-                        A=A, db=db, a=a, w=w, u=u, offset_state=dm$offset_state,
-                        offset_det=dm$offset_det), inps$data)
-
-      tmb_param <- c(inps$pars, list(beta_scale=rep(0,0)))
-
-      if(is.null(starts)){
-        if(keyfun != "uniform") tmb_param$beta_det[1] <- log(median(db))
-      }
-
-      if(keyfun == "hazard") tmb_param$beta_scale <- rep(0,1)
-      if(keyfun == "uniform") tmb_param$beta_det <- rep(0,0)
-
-      # Fit model in TMB
-      tmb_out <- fit_TMB("tmb_distsamp", tmb_dat, tmb_param, inps$rand_ef,
-                         starts=starts, method)
-      tmb_mod <- tmb_out$TMB
-      fm <- tmb_out$opt
-      fmAIC <- tmb_out$AIC
-      nll <- tmb_mod$fn
-
-      # Organize fixed-effect estimate from TMB output
-      state_coef <- get_coef_info(tmb_out$sdr, "state", lamParms, lamIdx)
-      det_coef <- get_coef_info(tmb_out$sdr, "det", detParms, detIdx)
-
-      if(keyfun=="hazard"){
-        scale_coef <- get_coef_info(tmb_out$sdr, "scale", scaleParms, nP)
-      }
-
-      # Organize random-effect estimates from TMB output
-      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", formulas$state, siteCovs(data))
-      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", formulas$det, siteCovs(data))
-
-    }
-
-    stateName <- switch(output, abund = "Abundance", density = "Density")
-    stateEstimates <- unmarkedEstimate(name = stateName,
-        short.name = "lam", estimates = state_coef$ests, covMat = state_coef$cov,
-        fixed=1:nAP, invlink = "exp", invlinkGrad = "exp", randomVarInfo=state_rand_info)
-    estimateList <- unmarkedEstimateList(list(state=stateEstimates))
-
-    if(keyfun != "uniform") {
-      detEstimates <- unmarkedEstimate(name = "Detection", short.name = "p",
-        estimates = det_coef$ests, covMat = det_coef$cov, fixed=1:nDP,
-        invlink = "exp", invlinkGrad = "exp", randomVarInfo=det_rand_info)
-      estimateList@estimates$det <- detEstimates
-
-      if(keyfun == "hazard"){
-        scaleEstimates <- unmarkedEstimate(name = "Hazard-rate(scale)",
-          short.name = "p", estimates = scale_coef$ests,
-          covMat = scale_coef$cov, fixed=1, invlink = "exp", invlinkGrad = "exp",
-          randomVarInfo=list())
-        estimateList@estimates$scale <- scaleEstimates
+  if(engine %in% c("C","R")){
+    # This is overly complicated to maintain backwards compatability
+    # Maybe we should just set the sigma init to log(median(db)) for all
+    if(is.null(starts)){
+      starts <- rep(0, max(unlist(par_inds)))
+      if(keyfun == "halfnorm"){
+        starts[par_inds$det[1]] <- log(max(db))  
+      } else if(keyfun == "exp"){
+        if(engine == "TMB"){
+          starts[par_inds$det[1]] <- log(median(db))
+        }
+      } else if(keyfun == "hazard"){
+        starts[par_inds$det[1]] <- log(median(db))
+        starts[par_inds$scale] <- 1
       }
     }
 
-    dsfit <- new("unmarkedFitDS", fitType = "distsamp", call = match.call(),
-        opt = fm, formula = formula, formlist = formulas, data = data, keyfun=keyfun,
-        sitesRemoved = dm$removed.sites, unitsOut=unitsOut,
-        estimates = estimateList, AIC = fmAIC, negLogLike = fm$value,
-        nllFun = nll, output=output, TMB=tmb_mod)
-    return(dsfit)
+    fit <- fit_optim(nll, starts, method, se, estimateList, par_inds, ...)
+
+  } else if(engine == "TMB"){
+
+    # Set up TMB input data
+    survey_type <- switch(survey, line={0}, point={1})
+    keyfun_type <- switch(keyfun, uniform={0}, halfnorm={1}, exp={2},
+                          hazard={3})
+    tmb_inputs <- get_TMB_inputs(formulas = formulas, dm = dm, par_inds = par_inds, umf = data, 
+                                 survey_type = survey_type, keyfun_type = keyfun_type,
+                                 A = A, db = db, a = a, w = w, u = u)
+    if(is.null(starts)){
+      if(keyfun != "uniform") tmb_inputs$pars$beta_det[1] <- log(median(db))
+    }
+
+    # Fit model with TMB
+    fit <- fit_TMB2("tmb_distsamp", starts, method, estimateList, par_inds,
+                    tmb_inputs, data, ...)
+  }
+
+  new("unmarkedFitDS", fitType = "distsamp", call = match.call(),
+      opt = fit$opt, formula = formula, formlist = formulas, data = data, keyfun=keyfun,
+      sitesRemoved = dm$removed.sites, unitsOut=unitsOut,
+      estimates = fit$estimate_list, AIC = fit$AIC, negLogLike = fit$opt$value,
+      nllFun = fit$nll, output=output, TMB=fit$TMB)
 }
 
 

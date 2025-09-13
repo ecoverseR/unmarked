@@ -19,8 +19,8 @@ Type tmb_distsamp(objective_function<Type>* obj) {
   DATA_INTEGER(n_group_vars_det);
   DATA_IVECTOR(n_grouplevels_det);
   
-  DATA_INTEGER(survey_type);
-  DATA_INTEGER(keyfun_type);
+  DATA_STRING(survey);
+  DATA_STRING(keyfun);
 
   DATA_VECTOR(A); // Area
   DATA_VECTOR(db); // distance breaks
@@ -31,14 +31,6 @@ Type tmb_distsamp(objective_function<Type>* obj) {
   PARAMETER_VECTOR(beta_state); //Fixed effect params for lambda
   PARAMETER_VECTOR(b_state); //Random intercepts and/or slopes for lambda
   PARAMETER_VECTOR(lsigma_state); //Random effect variance(s) for lambda
-
-  PARAMETER_VECTOR(beta_det); //Same thing but for det
-  PARAMETER_VECTOR(b_det);
-  PARAMETER_VECTOR(lsigma_det);
- 
-  PARAMETER_VECTOR(beta_scale); //Trick here: this is 0-length array if keyfun != hazard
-  Type scale = 0; // If not hazard  this is ignored later 
-  if(keyfun_type == 3) scale = exp(beta_scale(0)); // If hazard
 
   Type loglik = 0.0;
 
@@ -54,11 +46,20 @@ Type tmb_distsamp(objective_function<Type>* obj) {
 
   //Construct distance parameter (sigma, rate, etc.) vector
   vector<Type> dp(M);
-  if(keyfun_type > 0){ // If keyfun is not uniform
+  if(keyfun != "uniform"){ // If keyfun is not uniform
+    PARAMETER_VECTOR(beta_det); //Same thing but for det
+    PARAMETER_VECTOR(b_det);
+    PARAMETER_VECTOR(lsigma_det);
     dp = X_det * beta_det + offset_det;
     dp = add_ranef(dp, loglik, b_det, Z_det, lsigma_det, 
                    n_group_vars_det, n_grouplevels_det);
     dp = exp(dp);
+  }
+
+  Type scale = 0; // If not hazard  this is ignored later 
+  if(keyfun == "hazard"){  // If hazard
+    PARAMETER_VECTOR(beta_scale);
+    scale = exp(beta_scale(0));
   }
 
   //Likelihood

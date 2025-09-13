@@ -613,7 +613,7 @@ get_ds_area <- function(umf, unitsOut){
   # Calculate area based on survey type
   A <- switch(umf@survey,
     line = umf@tlength * max(db) * 2,
-    point = pi * max(db)^2
+    point = rep(pi * max(db)^2, numSites(umf))
   )
 
   # Convert input unit to kmsq
