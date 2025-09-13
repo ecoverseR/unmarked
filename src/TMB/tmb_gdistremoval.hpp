@@ -12,61 +12,22 @@ Type tmb_gdistremoval(objective_function<Type>* obj) {
   DATA_INTEGER(K);
   DATA_IVECTOR(Kmin);
   DATA_INTEGER(T);
-
-  DATA_MATRIX(X_lambda); //lambda fixed effect design mat
-  DATA_SPARSE_MATRIX(Z_lambda); //psi random effect design mat
-  DATA_INTEGER(n_group_vars_lambda); //# of grouping variables for lambda
-  DATA_IVECTOR(n_grouplevels_lambda); //# of levels of each grouping variable
-  
-  DATA_MATRIX(X_phi);
-  DATA_SPARSE_MATRIX(Z_phi);
-  DATA_INTEGER(n_group_vars_phi);
-  DATA_IVECTOR(n_grouplevels_phi);
-
-  DATA_MATRIX(X_dist);
-  DATA_SPARSE_MATRIX(Z_dist);
-  DATA_INTEGER(n_group_vars_dist);
-  DATA_IVECTOR(n_grouplevels_dist);
-
-  DATA_MATRIX(X_rem);
-  DATA_SPARSE_MATRIX(Z_rem);
-  DATA_INTEGER(n_group_vars_rem);
-  DATA_IVECTOR(n_grouplevels_rem);
-  
   DATA_INTEGER(keyfun_type);
-
   DATA_VECTOR(A); // Area
   DATA_VECTOR(db); // distance breaks
   DATA_MATRIX(a);
   DATA_VECTOR(w);
   DATA_MATRIX(u);
-
   DATA_IVECTOR(per_len); // Length of removal periods
 
+  DATA_MATRIX(X_lambda); //lambda fixed effect design mat
+  DATA_SPARSE_MATRIX(Z_lambda); //psi random effect design mat
+  DATA_INTEGER(n_group_vars_lambda); //# of grouping variables for lambda
+  DATA_IVECTOR(n_grouplevels_lambda); //# of levels of each grouping variable
   PARAMETER_VECTOR(beta_lambda); //Fixed effect params for lambda
   PARAMETER_VECTOR(b_lambda); //Random intercepts and/or slopes for lambda
   PARAMETER_VECTOR(lsigma_lambda); //Random effect variance(s) for lambda
-  
-  PARAMETER_VECTOR(beta_alpha); //Only used if NB or ZIP
-  Type log_alpha = 0;
-  if(mixture > 1) log_alpha = beta_alpha(0);
 
-  PARAMETER_VECTOR(beta_phi);
-  PARAMETER_VECTOR(b_phi);
-  PARAMETER_VECTOR(lsigma_phi);
-
-  PARAMETER_VECTOR(beta_dist); //Same thing but for det
-  PARAMETER_VECTOR(b_dist);
-  PARAMETER_VECTOR(lsigma_dist);
- 
-  PARAMETER_VECTOR(beta_scale); //Trick here: this is 0-length array if keyfun != hazard
-  Type scale = 0; // If not hazard  this is ignored later 
-  if(keyfun_type == 3) scale = exp(beta_scale(0)); // If hazard
-
-  PARAMETER_VECTOR(beta_rem); //Same thing but for det
-  PARAMETER_VECTOR(b_rem);
-  PARAMETER_VECTOR(lsigma_rem);
-  
   Type loglik = 0.0;
   int M = X_lambda.rows(); // # of sites
   int Rdist = y_dist.size() / M;
@@ -74,34 +35,71 @@ Type tmb_gdistremoval(objective_function<Type>* obj) {
   int Rrem = y_rem.size() / M;
   int Jrem = Rrem / T;
 
-  //Construct lambda vector
+  // Construct lambda vector
   vector<Type> lam = X_lambda * beta_lambda;
   lam = add_ranef(lam, loglik, b_lambda, Z_lambda, lsigma_lambda, 
                   n_group_vars_lambda, n_grouplevels_lambda);
   lam = exp(lam);
   lam = lam.array() * A.array();
-  
-  //Construct availability (phi) vector
+
+  // Second abundance parameter, only used if NB or ZIP
+  Type log_alpha = 0;
+  if(mixture > 1){
+    PARAMETER_VECTOR(beta_alpha);
+    log_alpha = beta_alpha(0);
+  }
+
+  // Availability parameter if T > 1
   vector<Type> phi(M*T);
   phi.setOnes();
   if(T > 1){
+    DATA_MATRIX(X_phi);
+    DATA_SPARSE_MATRIX(Z_phi);
+    DATA_INTEGER(n_group_vars_phi);
+    DATA_IVECTOR(n_grouplevels_phi);
+    PARAMETER_VECTOR(beta_phi);
+    PARAMETER_VECTOR(b_phi);
+    PARAMETER_VECTOR(lsigma_phi);
+
     phi = X_phi * beta_phi;
     phi = add_ranef(phi, loglik, b_phi, Z_phi, lsigma_phi,
                     n_group_vars_phi, n_grouplevels_phi);
     phi = invlogit(phi);
   }
 
-  //Construct distance parameter (sigma, rate, etc.) vector
+  // Distance parameter (sigma, rate, etc.) if not uniform keyfun
   vector<Type> dp(M*T);
-  if(keyfun_type > 0){ // If keyfun is not uniform
+  if(keyfun_type > 0){
+    DATA_MATRIX(X_dist);
+    DATA_SPARSE_MATRIX(Z_dist);
+    DATA_INTEGER(n_group_vars_dist);
+    DATA_IVECTOR(n_grouplevels_dist);
+    PARAMETER_VECTOR(beta_dist); //Same thing but for det
+    PARAMETER_VECTOR(b_dist);
+    PARAMETER_VECTOR(lsigma_dist);
+
     dp = X_dist * beta_dist;
     dp = add_ranef(dp, loglik, b_dist, Z_dist, lsigma_dist, 
                    n_group_vars_dist, n_grouplevels_dist);
     dp = exp(dp);
   }
 
+  // Hazard rate scale parameter if needed
+  Type scale = 0; 
+  if(keyfun_type == 3){
+    PARAMETER_VECTOR(beta_scale);
+    scale = exp(beta_scale(0));
+  }
 
-  //Construct removal parameter vector
+  // Removal parameter vector
+  DATA_MATRIX(X_rem);
+  DATA_SPARSE_MATRIX(Z_rem);
+  DATA_INTEGER(n_group_vars_rem);
+  DATA_IVECTOR(n_grouplevels_rem);
+  PARAMETER_VECTOR(beta_rem);
+  PARAMETER_VECTOR(b_rem);
+  PARAMETER_VECTOR(lsigma_rem);
+
   vector<Type> rp(M*Rrem);
   rp = X_rem * beta_rem;
   rp = add_ranef(rp, loglik, b_rem, Z_rem, lsigma_rem,

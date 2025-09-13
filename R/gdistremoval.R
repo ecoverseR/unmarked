@@ -57,7 +57,7 @@ setAs("unmarkedFrameGDR", "data.frame", function(from){
 gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   distanceformula=~1, data, keyfun=c("halfnorm", "exp", "hazard", "uniform"),
   output=c("abund", "density"), unitsOut=c("ha", "kmsq"), mixture=c('P', 'NB', 'ZIP'),
-  K, starts, method = "BFGS", se = TRUE, engine=c("C","TMB"), threads=1, ...){
+  K, starts = NULL, method = "BFGS", se = TRUE, engine=c("C","TMB"), threads=1, ...){
 
   keyfun <- match.arg(keyfun)
   output <- match.arg(output)
@@ -83,27 +83,43 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
 
   Kmin = apply(ysum, 1, max, na.rm=T)
 
+  # Set up submodels-----------------------------------------------------------
+  estimateList <- unmarkedEstimateList(list(
+    lambda = unmarkedEstimate(name = "Abundance", short.name = "lambda",
+                              invlink = "exp")
+  ))
+
+  if(mixture != "P"){
+    estimateList@estimates$alpha <- 
+      unmarkedEstimate(name = "Dispersion", short.name = "alpha", invlink = "exp")
+  }
+
+  if(T > 1){
+    estimateList@estimates$phi <- 
+      unmarkedEstimate(name = "Availability", short.name = "phi", invlink = "logistic")
+  }
+
+  if(keyfun != "uniform"){
+    estimateList@estimates$dist <- 
+      unmarkedEstimate(name = "Distance", short.name = "dist", invlink = "exp")
+  }
+
+  if(keyfun == "hazard"){
+    estimateList@estimates$scale <- 
+      unmarkedEstimate(name = "Hazard-rate (scale)", short.name = "scale", invlink = "exp")
+  }
+
+  estimateList@estimates$rem <- 
+    unmarkedEstimate(name = "Removal", short.name = "rem", invlink = "logistic")
+
   # Parameters-----------------------------------------------------------------
   n_param <- c(ncol(gd$X_lambda), ifelse(mixture=="P",0,1),
               ifelse(T>1,ncol(gd$X_phi),0),
               ifelse(keyfun=="uniform", 0, ncol(gd$X_dist)),
               ifelse(keyfun=="hazard",1,0),
               ncol(gd$X_rem))
-  nP <- sum(n_param)
 
-  pnames <- colnames(gd$X_lambda)
-  if(mixture!="P") pnames <- c(pnames, "alpha")
-  if(data@numPrimary > 1) pnames <- c(pnames, colnames(gd$X_phi))
-  if(keyfun!="uniform") pnames <- c(pnames, colnames(gd$X_dist))
-  if(keyfun=="hazard") pnames <- c(pnames, "scale")
-  pnames <- c(pnames, colnames(gd$X_rem))
-
-  lam_ind <- 1:n_param[1]
-  a_ind <- n_param[1]+1
-  phi_ind <- (sum(n_param[1:2])+1):(sum(n_param[1:3]))
-  dist_ind <- (sum(n_param[1:3])+1):(sum(n_param[1:4]))
-  sc_ind <- (sum(n_param[1:4])+1)
-  rem_ind <- (sum(n_param[1:5])+1):(sum(n_param[1:6]))
+  par_inds <- get_parameter_inds(estimateList, gd)
 
   # Distance info--------------------------------------------------------------
   db <- data@dist.breaks
@@ -112,9 +128,7 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   umf_new@y <- umf_new@yDistance
   ua <- getUA(umf_new) #in utils.R
   u <- ua$u; a <- ua$a
-  A <- rowSums(a)
-  switch(data@unitsIn, m = A <- A / 1e6, km = A <- A)
-  switch(unitsOut,ha = A <- A * 100, kmsq = A <- A)
+  A <- get_ds_area(umf_new, unitsOut)
   if(output=='abund') A <- rep(1, numSites(data))
 
   # Removal info---------------------------------------------------------------
@@ -126,12 +140,10 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   # Using C++ engine-----------------------------------------------------------
   if(engine == "C"){
 
-    if(missing(starts)){
-      starts <- rep(0, nP)
-      starts[sum(n_param[1:3])+1] <- log(median(db))
-    } else if(length(starts)!=nP){
-      stop(paste0("starts must be length ",sum(n_param)), call.=FALSE)
-    }
+    if(is.null(starts)){
+      starts <- rep(0, max(unlist(par_inds)))
+      if(keyfun != "uniform") starts[par_inds$dist[1]] <- log(median(db))
+    } 
 
     nll <- function(param){
       nll_gdistremoval(param, n_param, gd$yDist, gd$yRem, ysum, mixture_code, keyfun,
@@ -139,137 +151,33 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
                       K, Kmin, threads=threads)
     }
 
-    opt <- optim(starts, nll, method=method, hessian=se, ...)
-
-    covMat <- invertHessian(opt, nP, se)
-    ests <- opt$par
-    names(ests) <- pnames
-    fmAIC <- 2 * opt$value + 2 * nP
-    tmb_mod <- NULL
-
-    #Organize fixed-effect estimates
-    lambda_coef <- list(ests=ests[lam_ind], cov=as.matrix(covMat[lam_ind,lam_ind]))
-    if(mixture != "P"){
-      alpha_coef <- list(ests=ests[a_ind], cov=as.matrix(covMat[a_ind,a_ind]))
-    }
-    if(T > 1){
-      phi_coef <- list(ests=ests[phi_ind], cov=as.matrix(covMat[phi_ind,phi_ind]))
-    }
-    if(keyfun != "uniform"){
-      dist_coef <- list(ests=ests[dist_ind], cov=as.matrix(covMat[dist_ind,dist_ind]))
-    }
-    if(keyfun == "hazard"){
-      scale_coef <- list(ests=ests[sc_ind], cov=as.matrix(covMat[sc_ind,sc_ind]))
-    }
-    rem_coef <- list(ests=ests[rem_ind], cov=as.matrix(covMat[rem_ind,rem_ind]))
-
-    # No random effects in C engine
-    lambda_rand_info <- phi_rand_info <- dist_rand_info <- rem_rand_info <- list()
-
+    fit <- fit_optim(nll, starts, method, se, estimateList, par_inds, ...)
   }
 
   # Using TMB engine-----------------------------------------------------------
-
   if(engine == "TMB"){
-    if(missing(starts)) starts <- NULL
-
-    dlist <- list(lambda=siteCovs(data), phi=yearlySiteCovs(data),
-                  dist=siteCovs(data), rem=obsCovs(data))
-    inps <- get_ranef_inputs(formulas, dlist,
-                             gd[c("X_lambda","X_phi","X_dist","X_rem")],
-                             gd[c("Z_lambda","Z_phi","Z_dist","Z_rem")])
-
     keyfun_type <- switch(keyfun, uniform={0}, halfnorm={1}, exp={2},
                           hazard={3})
-    tmb_dat <- c(list(y_dist=gd$yDist, y_rem=gd$yRem, y_sum=ysum,
-                      mixture=mixture_code, K=K, Kmin=Kmin, T=T, keyfun_type=keyfun_type,
-                      A=A, db=db, a=a, w=w, u=u, per_len=pl), inps$data)
-
-    tmb_param <- c(inps$pars, list(beta_alpha=rep(0,0), beta_scale=rep(0,0)))
+    tmb_inputs <- get_TMB_inputs(formulas = formulas, dm = gd, par_inds = par_inds, umf = data,
+                                 y_dist = gd$yDist, y_rem = gd$yRem, y_sum = ysum,
+                                 mixture = mixture_code, keyfun_type = keyfun_type,
+                                 K = K, Kmin = Kmin, T = T,
+                                 A = A, db = db, a = a, w = w, u = u, per_len=pl)
 
     if(is.null(starts)){
-      if(keyfun != "uniform") tmb_param$beta_dist[1] <- log(median(db))
+      if(keyfun != "uniform") tmb_inputs$pars$beta_dist[1] <- log(median(db))
     }
 
-    if(keyfun == "hazard") tmb_param$beta_scale <- rep(0,1)
-    if(keyfun == "uniform") tmb_param$beta_dist <- rep(0,0)
-    if(mixture != "P") tmb_param$beta_alpha <- rep(0,1)
-    if(T == 1){
-      tmb_param$beta_phi <- tmb_param$b_phi <- tmb_param$lsigma_phi <- rep(0,0)
-    }
-    # Fit model in TMB
-    tmb_out <- fit_TMB("tmb_gdistremoval", tmb_dat, tmb_param, inps$rand_ef,
-                       starts=starts, method)
-    tmb_mod <- tmb_out$TMB
-    opt <- tmb_out$opt
-    fmAIC <- tmb_out$AIC
-    nll <- tmb_mod$fn
-
-    # Organize estimates from TMB output
-    lambda_coef <- get_coef_info(tmb_out$sdr, "lambda", pnames[lam_ind], lam_ind)
-    lambda_rand_info <- get_randvar_info(tmb_out$sdr, "lambda", lambdaformula, siteCovs(data))
-    if(mixture != "P"){
-      alpha_coef <- get_coef_info(tmb_out$sdr, "alpha", pnames[a_ind], a_ind)
-    }
-    if(T > 1){
-      phi_coef <- get_coef_info(tmb_out$sdr, "phi", pnames[phi_ind], phi_ind)
-      phi_rand_info <- get_randvar_info(tmb_out$sdr, "phi", phiformula, yearlySiteCovs(data))
-    }
-    if(keyfun != "uniform"){
-      dist_coef <- get_coef_info(tmb_out$sdr, "dist", pnames[dist_ind], dist_ind)
-      dist_rand_info <- get_randvar_info(tmb_out$sdr, "dist", distanceformula, siteCovs(data))
-    }
-    if(keyfun == "hazard"){
-      scale_coef <- get_coef_info(tmb_out$sdr, "scale", pnames[sc_ind], sc_ind)
-    }
-    rem_coef <- get_coef_info(tmb_out$sdr, "rem", pnames[rem_ind], rem_ind)
-    rem_rand_info <- get_randvar_info(tmb_out$sdr, "rem", removalformula, obsCovs(data))
-
+    # Fit model with TMB
+    fit <- fit_TMB2("tmb_gdistremoval", starts, method, estimateList, par_inds,
+                    tmb_inputs, data, ...)
   }
-
-  lamEstimates <- unmarkedEstimate(name = "Abundance", short.name = "lambda",
-    estimates = lambda_coef$ests, covMat = lambda_coef$cov, fixed = 1:length(lam_ind),
-    invlink = "exp", invlinkGrad = "exp", randomVarInfo=lambda_rand_info)
-
-  estimateList <- unmarkedEstimateList(list(lambda=lamEstimates))
-
-  if(mixture!="P"){
-    estimateList@estimates$alpha <- unmarkedEstimate(name = "Dispersion",
-        short.name = "alpha", estimates = alpha_coef$ests, covMat = alpha_coef$cov,
-        fixed = 1, invlink = "exp", invlinkGrad = "exp", randomVarInfo=list())
-  }
-
-  if(T>1){
-    estimateList@estimates$phi <- unmarkedEstimate(name = "Availability",
-        short.name = "phi", estimates = phi_coef$ests, covMat = phi_coef$cov,
-        fixed = 1:length(phi_ind), invlink = "logistic", invlinkGrad = "logistic.grad",
-        randomVarInfo=phi_rand_info)
-  }
-
-  if(keyfun!="uniform"){
-    estimateList@estimates$dist <- unmarkedEstimate(name = "Distance",
-        short.name = "dist", estimates = dist_coef$ests, covMat = dist_coef$cov,
-        fixed = 1:length(dist_ind), invlink = "exp", invlinkGrad = "exp",
-        randomVarInfo=dist_rand_info)
-  }
-
-  if(keyfun=="hazard"){
-    estimateList@estimates$scale <- unmarkedEstimate(name = "Hazard-rate (scale)",
-        short.name = "scale", estimates = scale_coef$ests, covMat = scale_coef$cov,
-        fixed = 1, invlink = "exp", invlinkGrad = "exp", randomVarInfo=list())
-  }
-
-  estimateList@estimates$rem <- unmarkedEstimate(name = "Removal",
-      short.name = "rem", estimates = rem_coef$ests, covMat = rem_coef$cov,
-      fixed = 1:length(rem_ind), invlink = "logistic", invlinkGrad = "logistic.grad",
-      randomVarInfo=rem_rand_info)
 
   new("unmarkedFitGDR", fitType = "gdistremoval",
     call = match.call(), formlist = formulas, data = data, 
-    estimates = estimateList, sitesRemoved = numeric(0),
-    AIC = fmAIC, opt = opt, negLogLike = opt$value, nllFun = nll,
-    mixture=mixture, K=K, keyfun=keyfun, unitsOut=unitsOut, output=output, TMB=tmb_mod)
-
+    estimates = fit$estimate_list, sitesRemoved = numeric(0),
+    AIC = fit$AIC, opt = fit$opt, negLogLike = fit$opt$value, nllFun = fit$nll,
+    mixture=mixture, K=K, keyfun=keyfun, unitsOut=unitsOut, output=output, TMB=fit$TMB)
 }
 
 # Methods
