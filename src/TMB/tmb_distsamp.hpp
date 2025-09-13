@@ -19,8 +19,8 @@ Type tmb_distsamp(objective_function<Type>* obj) {
   DATA_INTEGER(n_group_vars_det);
   DATA_IVECTOR(n_grouplevels_det);
   
-  DATA_STRING(survey);
-  DATA_STRING(keyfun);
+  DATA_INTEGER(survey_type);
+  DATA_INTEGER(keyfun_type);
 
   DATA_VECTOR(A); // Area
   DATA_VECTOR(db); // distance breaks
@@ -46,7 +46,7 @@ Type tmb_distsamp(objective_function<Type>* obj) {
 
   //Construct distance parameter (sigma, rate, etc.) vector
   vector<Type> dp(M);
-  if(keyfun != "uniform"){ // If keyfun is not uniform
+  if(keyfun_type > 0){ // If keyfun is not uniform
     PARAMETER_VECTOR(beta_det); //Same thing but for det
     PARAMETER_VECTOR(b_det);
     PARAMETER_VECTOR(lsigma_det);
@@ -57,7 +57,7 @@ Type tmb_distsamp(objective_function<Type>* obj) {
   }
 
   Type scale = 0; // If not hazard  this is ignored later 
-  if(keyfun == "hazard"){  // If hazard
+  if(keyfun_type == 3){  // If hazard
     PARAMETER_VECTOR(beta_scale);
     scale = exp(beta_scale(0));
   }
