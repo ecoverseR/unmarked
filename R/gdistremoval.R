@@ -169,7 +169,7 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
     }
 
     # Fit model with TMB
-    fit <- fit_TMB2("tmb_gdistremoval", starts, method, estimateList, par_inds,
+    fit <- fit_TMB("tmb_gdistremoval", starts, method, estimateList, par_inds,
                     tmb_inputs, data, ...)
   }
 

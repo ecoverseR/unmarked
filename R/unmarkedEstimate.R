@@ -319,12 +319,12 @@ insert_estimates <- function(estimate_list, opt, par_inds){
   estimate_list
 }
 
-insert_TMB_estimates <- function(estimate_list, tmb_out, par_inds, formulas, umf){ 
+insert_TMB_estimates <- function(estimate_list, sdreport, par_inds, formulas, umf){ 
   for (i in names(estimate_list)){
-    coefs <- get_coef_info(tmb_out$sdr, i, names(par_inds[[i]]), par_inds[[i]])
+    coefs <- get_coef_info(sdreport, i, names(par_inds[[i]]), par_inds[[i]])
 
     if(i %in% names(formulas)){   
-      rand <- get_randvar_info(tmb_out$sdr, i, formulas[[i]],
+      rand <- get_randvar_info(sdreport, i, formulas[[i]],
                                get_covariates(umf, i))
       estimate_list@estimates[[i]]@randomVarInfo <- rand
     }
@@ -338,18 +338,43 @@ insert_TMB_estimates <- function(estimate_list, tmb_out, par_inds, formulas, umf
   estimate_list
 }
 
-# Temporary wrapper until we can replace fit_TMB entirely
-fit_TMB2 <- function(model, starts, method, estimate_list, par_inds, 
+fit_TMB <- function(model, starts, method, estimate_list, par_inds, 
                      tmb_inputs, umf, ...){
 
-  tmb_out <- fit_TMB(model, tmb_inputs$data, tmb_inputs$pars, tmb_inputs$rand_ef,
-                     starts=starts, method, ...)
-  
-  estimate_list <- insert_TMB_estimates(estimate_list, tmb_out, par_inds,
+  params <- tmb_inputs$pars
+  fixed_sub <- names(params)[!names(params) %in% tmb_inputs$rand_ef]
+  nfixed <- length(unlist(params[fixed_sub]))
+  list_fixed_only <- params[fixed_sub]
+  plengths <- sapply(list_fixed_only, length)
+  starts_order <- rep(fixed_sub, plengths)
+
+  if(!is.null(starts)){
+    if(length(starts) != nfixed){
+      stop(paste("The number of starting values should be", nfixed))
+    }
+    list_fixed_only <- params[fixed_sub]
+    list_fixed_only <- utils::relist(starts, list_fixed_only)
+    params <- replace(params, names(list_fixed_only), list_fixed_only)
+  }
+
+  tmb_mod <- TMB::MakeADFun(data = c(model = model, tmb_inputs$data),
+                            parameters = params,
+                            random = tmb_inputs$rand_ef,
+                            silent=TRUE,
+                            DLL = "unmarked_TMBExports")
+  tmb_mod$starts_order <- starts_order
+
+  opt <- optim(tmb_mod$par, fn=tmb_mod$fn, gr=tmb_mod$gr, method=method, ...)
+
+  sdr <- TMB::sdreport(tmb_mod, getJointPrecision=TRUE)
+  sdr$par <- tmb_mod$par
+
+  AIC = 2 * opt$value + 2 * nfixed
+
+  estimate_list <- insert_TMB_estimates(estimate_list, sdr, par_inds,
                                         tmb_inputs$formulas, umf)
   
-  list(opt = tmb_out$opt, TMB = tmb_out$TMB, nll = tmb_out$TMB$fn,
-       AIC = tmb_out$AIC,
+  list(opt = opt, TMB = tmb_mod, sdr = sdr, nll = tmb_mod$fn, AIC = AIC,
        estimate_list = estimate_list)
 }
 

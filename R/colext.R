@@ -62,7 +62,7 @@ colext <- function(psiformula = ~ 1, gammaformula = ~ 1,
   # Currently the TMB code requires y to be a vector
   tmb_inputs$data$y <- as.vector(t(tmb_inputs$data$y))
 
-  fit <- fit_TMB2("tmb_colext", starts, method, estimateList, par_inds,
+  fit <- fit_TMB("tmb_colext", starts, method, estimateList, par_inds,
                   tmb_inputs, data, ...)
 
   # Compute projected estimates

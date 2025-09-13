@@ -72,7 +72,7 @@ multinomPois <- function(formula, data, starts = NULL, method = "BFGS",
                                  pifun_type=pifun_type)
 
     # Fit model with TMB
-    fit <- fit_TMB2("tmb_multinomPois", starts, method, estimateList, par_inds,
+    fit <- fit_TMB("tmb_multinomPois", starts, method, estimateList, par_inds,
                     tmb_inputs, data, ...)
   }
   

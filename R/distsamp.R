@@ -221,7 +221,7 @@ distsamp <- function(formula, data,
     }
 
     # Fit model with TMB
-    fit <- fit_TMB2("tmb_distsamp", starts, method, estimateList, par_inds,
+    fit <- fit_TMB("tmb_distsamp", starts, method, estimateList, par_inds,
                     tmb_inputs, data, ...)
   }
 

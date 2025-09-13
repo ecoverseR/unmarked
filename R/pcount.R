@@ -108,7 +108,7 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"),
                                    K=K, Kmin=Kmin, mixture=mixture_code)
 
       # Fit model with TMB
-      fit <- fit_TMB2("tmb_pcount", starts, method, estimateList, par_inds,
+      fit <- fit_TMB("tmb_pcount", starts, method, estimateList, par_inds,
                       tmb_inputs, data, ...)
     }
 

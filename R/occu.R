@@ -82,7 +82,7 @@ occu <- function(formula, data, knownOcc = numeric(0),
                                  no_detect=nd, link=ifelse(linkPsi=="cloglog",1,0))
 
     # Fit model with TMB
-    fit <- fit_TMB2("tmb_occu", starts, method, estimateList, par_inds,
+    fit <- fit_TMB("tmb_occu", starts, method, estimateList, par_inds,
                     tmb_inputs, data, ...)
   }
 

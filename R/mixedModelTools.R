@@ -191,41 +191,6 @@ check_no_support <- function(formula_list){
   }
 }
 
-fit_TMB <- function(model, data, params, random,
-                    starts, method, ...){
-
-  fixed_sub <- names(params)[!names(params) %in% random]
-  nfixed <- length(unlist(params[fixed_sub]))
-  list_fixed_only <- params[fixed_sub]
-  plengths <- sapply(list_fixed_only, length)
-  starts_order <- rep(fixed_sub, plengths)
-
-  if(!is.null(starts)){
-    if(length(starts) != nfixed){
-      stop(paste("The number of starting values should be", nfixed))
-    }
-    list_fixed_only <- params[fixed_sub]
-    list_fixed_only <- utils::relist(starts, list_fixed_only)
-    params <- replace(params, names(list_fixed_only), list_fixed_only)
-  }
-
-  tmb_mod <- TMB::MakeADFun(data = c(model = model, data),
-                            parameters = params,
-                            random = random,
-                            silent=TRUE,
-                            DLL = "unmarked_TMBExports")
-  tmb_mod$starts_order <- starts_order
-
-  opt <- optim(tmb_mod$par, fn=tmb_mod$fn, gr=tmb_mod$gr, method=method, ...)
-
-  sdr <- TMB::sdreport(tmb_mod, getJointPrecision=TRUE)
-  sdr$par <- tmb_mod$par
-
-  AIC = 2 * opt$value + 2 * nfixed
-
-  list(opt=opt, TMB=tmb_mod, sdr=sdr, AIC=AIC)
-}
-
 get_coef_info <- function(tmb_report, type, names, idx){
   no_sigma <- !grepl("lsigma", get_fixed_names(tmb_report))
   fixed <- tmb_report$par.fixed[no_sigma] #take out sigmas
@@ -342,56 +307,6 @@ setMethod("randomTerms", "unmarkedFit", function(object, type, level=0.95, addMe
   rownames(out) <- NULL
   out
 })
-
-get_ranef_inputs <- function(forms, datalist, dms, Zs){
-  stopifnot(!is.null(names(datalist)))
-  mods <- names(datalist)
-  ngv <- mapply(get_group_vars, forms, datalist)
-  names(ngv) <- paste0("n_group_vars_",mods)
-  ngroup <- mapply(get_nrandom, forms, datalist, SIMPLIFY=FALSE)
-  names(ngroup) <- paste0("n_grouplevels_",mods)
-  names(dms) <- paste0("X_", mods)
-  names(Zs) <- paste0("Z_", mods)
-
-  dat <- c(ngv, ngroup, dms, Zs)
-
-  beta <- lapply(dms, function(x) rep(0, ncol(x)))
-  names(beta) <- paste0("beta_", mods)
-  b <- lapply(ngroup, function(x) rep(0, sum(x)))
-  names(b) <- paste0("b_", mods)
-  lsigma <- lapply(ngv, function(x) rep(0, x))
-  names(lsigma) <- paste0("lsigma_", mods)
-
-  pars <- c(beta, b, lsigma)
-
-  rand_ef <- paste0(names(b))[sapply(forms, has_random)]
-  if(length(rand_ef) == 0) rand_ef <- NULL
-
-  list(data=dat, pars=pars, rand_ef=rand_ef)
-}
-
-add_covariates <- function(covs_long, covs_short, n){
-
-  if(is.null(covs_short)){
-    return(covs_long)
-  }
-
-  if(is.null(covs_long)){
-    covs_long <- data.frame(.dummy=rep(1, n))
-  } else {
-    stopifnot(nrow(covs_long) == n)
-  }
-
-  exp_factor <- nrow(covs_long) / nrow(covs_short)
-  stopifnot(exp_factor > 1)
-
-  rep_idx <- rep(1:nrow(covs_short), each=exp_factor)
-
-  to_add <- covs_short[rep_idx, ,drop=FALSE]
-  stopifnot(nrow(covs_long) == nrow(to_add))
-
-  cbind(covs_long, to_add)
-}
 
 vcov_TMB <- function(object, type, fixedOnly){
 
