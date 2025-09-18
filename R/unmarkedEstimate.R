@@ -379,36 +379,29 @@ fit_TMB <- function(model, starts, method, estimate_list, par_inds,
 }
 
 get_TMB_inputs <- function(formulas, dm, par_inds, umf, ...){
-
-  datalist <- lapply(names(formulas), function(x) get_covariates(umf, x))
-  names(datalist) <- names(formulas)
-  dms <- dm[paste0("X_", names(formulas))] 
-  Zs <- dm[paste0("Z_", names(formulas))] 
-
   mods <- names(formulas)
+  
+  # Create TMB input data
+  datalist <- lapply(mods, function(x) get_covariates(umf, x))
+  names(datalist) <- mods
+  # Random effects info
   ngv <- mapply(get_group_vars, formulas, datalist)
   names(ngv) <- paste0("n_group_vars_",mods)
   ngroup <- mapply(get_nrandom, formulas, datalist, SIMPLIFY=FALSE)
   names(ngroup) <- paste0("n_grouplevels_",mods)
-  names(dms) <- paste0("X_", mods)
-  names(Zs) <- paste0("Z_", mods)
-
-  dat <- c(list(y = dm$y), ngv, ngroup, dms, Zs, list(...))
+  dat <- c(dm, ngv, ngroup, list(...))
   dat[sapply(dat, is.null)] <- NULL # erase from list
 
-  if(any(grepl("offset", names(dm)))){
-    dat <- c(dat, dm[paste0("offset_", mods)])
-  }
-
+  # Create TMB parameter structure
   beta <- lapply(par_inds, function(x) rep(0, length(x)))
   names(beta) <- paste0("beta_", names(par_inds))
   b <- lapply(ngroup, function(x) rep(0, sum(x)))
   names(b) <- paste0("b_", mods)
   lsigma <- lapply(ngv, function(x) rep(0, x))
   names(lsigma) <- paste0("lsigma_", mods)
-
   pars <- c(beta, b, lsigma)
 
+  # Identify random effects
   rand_ef <- paste0(names(b))[sapply(formulas, has_random)]
   if(length(rand_ef) == 0) rand_ef <- NULL
 
