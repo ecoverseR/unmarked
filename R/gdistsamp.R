@@ -2,8 +2,8 @@
 gdistsamp <- function(lambdaformula, phiformula, pformula, data,
     keyfun=c("halfnorm", "exp", "hazard", "uniform"),
     output=c("abund", "density"), unitsOut=c("ha", "kmsq"),
-    mixture=c("P", "NB", 'ZIP'), K, starts, method = "BFGS", se = TRUE, engine=c("C","R"),
-    rel.tol=1e-4, threads=1, ...){
+    mixture=c("P", "NB", 'ZIP'), K, starts = NULL, method = "BFGS", se = TRUE, 
+    engine=c("C","R"), rel.tol=1e-4, threads=1, ...){
   
   if(!is(data, "unmarkedFrameGDS"))
       stop("Data is not of class unmarkedFrameGDS.")
