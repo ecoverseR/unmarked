@@ -9,7 +9,7 @@ unmarkedFrameGOccu <- function(y, siteCovs=NULL, obsCovs=NULL, numPrimary,
 }
 
 goccu <- function(psiformula, phiformula, pformula, data,
-                  linkPsi = c("logit", "cloglog"), starts, method = "BFGS",
+                  linkPsi = c("logit", "cloglog"), starts = NULL, method = "BFGS",
                   se = TRUE, ...){
 
   linkPsi <- match.arg(linkPsi, c("logit","cloglog"))
@@ -68,79 +68,29 @@ goccu <- function(psiformula, phiformula, pformula, data,
     alpha_drop[i,] <- dropped
   }
 
-  # Bundle data for TMB
-  dataList <- list(y=y, T=T, link=ifelse(linkPsi=='cloglog', 1, 0), 
-                   X_psi=gd$X_psi, X_phi=gd$X_phi, X_det=gd$X_det,
-                   n_possible=n_possible,
-                   alpha_potential=alpha_potential, alpha_drop = alpha_drop,
-                   known_present=known_present, known_available=known_available, 
-                   missing_session=missing_session)
+  # Set up submodels
+  estimateList <- unmarkedEstimateList(list(
+    psi = unmarkedEstimate("Occupancy", short.name = "psi", invlink="logistic"),
+    phi = unmarkedEstimate("Availability", short.name = "phi", invlink="logistic"),
+    det = unmarkedEstimate("Detection", short.name = "p", invlink="logistic")
+  ))
 
-  # Provide dimensions and starting values for parameters
-  # This part should change to be more like occu() if we add random effects
-  psi_ind <- 1:ncol(gd$X_psi)
-  phi_ind <- 1:ncol(gd$X_phi) + max(psi_ind)
-  det_ind <- 1:ncol(gd$X_det) + max(phi_ind)
-  nP <- max(det_ind)
-  params <- list(beta_psi = rep(0, length(psi_ind)), 
-                 beta_phi = rep(0, length(phi_ind)), 
-                 beta_det = rep(0, length(det_ind)))
+  # Set up parameter names and indices
+  par_inds <- get_parameter_inds(estimateList, gd)
 
-  # Create TMB object
-  tmb_mod <- TMB::MakeADFun(data = c(model = "tmb_goccu", dataList),
-                            parameters = params,
-                            DLL = "unmarked_TMBExports", silent = TRUE)
+  tmb_inputs <- get_TMB_inputs(formulas, gd, par_inds, data,
+                               T = T, link = ifelse(linkPsi=='cloglog', 1, 0),
+                               n_possible=n_possible, alpha_potential=alpha_potential, 
+                               alpha_drop = alpha_drop, known_present=known_present, 
+                               known_available=known_available, missing_session=missing_session)
 
-  # Optimize TMB object, print and save results
-  if(missing(starts) || is.null(starts)) starts <- tmb_mod$par
-  opt <- optim(starts, fn = tmb_mod$fn, gr = tmb_mod$gr, method = method,
-               hessian = se, ...)
+  fit <- fit_TMB("tmb_goccu", starts, method, estimateList, par_inds,
+                  tmb_inputs, data, ...)
 
-  covMat <- invertHessian(opt, nP, se)
-  ests <- opt$par
-  names(ests) <- c(colnames(gd$X_psi), colnames(gd$X_phi), colnames(gd$X_det))
-  fmAIC <- 2 * opt$value + 2 * nP
-
-
-  psi_est <- unmarkedEstimate(name = "Occupancy", short.name = "psi",
-                              estimates = ests[psi_ind],
-                              covMat = covMat[psi_ind, psi_ind, drop=FALSE],
-                              fixed = 1:ncol(gd$X_psi),
-                              invlink = psiInvLink,
-                              invlinkGrad = psiLinkGrad,
-                              randomVarInfo=list()
-                            )
-
-  phi_est <- unmarkedEstimate(name = "Availability", short.name = "phi",
-                              estimates = ests[phi_ind],
-                              covMat = covMat[phi_ind, phi_ind, drop=FALSE],
-                              fixed = 1:ncol(gd$X_phi),
-                              invlink = "logistic",
-                              invlinkGrad = "logistic.grad",
-                              randomVarInfo=list()
-                            )
-
-  det_est <- unmarkedEstimate(name = "Detection", short.name = "p",
-                              estimates = ests[det_ind],
-                              covMat = covMat[det_ind, det_ind, drop=FALSE],
-                              fixed = 1:ncol(gd$X_det),
-                              invlink = "logistic",
-                              invlinkGrad = "logistic.grad",
-                              randomVarInfo=list()
-                            )
-
-  estimate_list <- unmarkedEstimateList(list(psi=psi_est, phi=phi_est, det=det_est))
-
-  # Create unmarkedFit object--------------------------------------------------
-  umfit <- new("unmarkedFitGOccu", fitType = "goccu", call = match.call(),
-                 formlist=formulas, data = data,
-                 sitesRemoved = gd$removed.sites,
-                 estimates = estimate_list, AIC = fmAIC, opt = opt,
-                 negLogLike = opt$value,
-                 nllFun = tmb_mod$fn, TMB=tmb_mod)
-
-  return(umfit)
-
+  new("unmarkedFitGOccu", fitType = "goccu", call = match.call(),
+      formlist=formulas, data = data, sitesRemoved = gd$removed.sites,
+      estimates = fit$estimate_list, AIC = fit$AIC, opt = fit$opt,
+      negLogLike = fit$opt$value, nllFun = fit$nll, TMB=fit$TMB)
 }
 
 # Methods
