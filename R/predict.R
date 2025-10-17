@@ -2,21 +2,19 @@
 
 # Common predict function for all fit types
 # with exception of occuMulti and occuMS (at the end of this file)
+# Calls internal fit-type specific function
 setMethod("predict", "unmarkedFit",
   function(object, type, newdata, backTransform = TRUE, na.rm = TRUE,
            appendData = FALSE, level=0.95, re.form=NULL, ...){
-
-  predict_internal(object=object, type=type, newdata=newdata,
-                   backTransform=backTransform, na.rm=na.rm, appendData=appendData,
-                   level=level, re.form=re.form, ...)
+  predict_internal(object, type, newdata, backTransform, na.rm, appendData,
+                   level, re.form, ...)
 })
 
-setGeneric("predict_internal", function(object, ...) standardGeneric("predict_internal"))
-
+# Basic internal predict method for unmarkedFit objects
 setMethod("predict_internal", "unmarkedFit",
   function(object, type, newdata, backTransform = TRUE, na.rm = TRUE,
            appendData = FALSE, level=0.95, re.form=NULL, ...){
-
+  
   # If no newdata, get actual data
   if(missing(newdata) || is.null(newdata)) newdata <- object@data
 
@@ -24,15 +22,15 @@ setMethod("predict_internal", "unmarkedFit",
   check_predict_arguments(object, type, newdata)
 
   # Get model matrix (X) and offset
-  # If newdata is an unmarkedFrame, use getDesign via predict_inputs_from_umf()
   is_raster <- FALSE
+  # If newdata is an unmarkedFrame, use getDesign via predict_inputs_from_umf()
   if(inherits(newdata, "unmarkedFrame")){
     # Generate model matrix and offsets
     pred_inps <- predict_inputs_from_umf(object, type, newdata, na.rm, re.form)
   } else {
     # If newdata is provided
-    # 1. Get original data and appropriate formula for type
-    orig_data <- get_orig_data(object, type)
+    # 1. Get original covariates and appropriate formula for type
+    orig_data <- get_covariates(object, type)
     orig_formula <- get_formula(object, type)
 
     # 2. If newdata is raster, get newdata from raster as data.frame
@@ -64,10 +62,97 @@ setMethod("predict_internal", "unmarkedFit",
 
 })
 
+check_predict_arguments <- function(object, type, newdata){
+  # Check if type is supported (i.e., is it in names(object)?)
+  opts <- names(object)
+  if(!type %in% opts){
+    stop("Valid types are ", paste(opts, collapse=", "), call.=FALSE)
+  }
+
+  # Check newdata class
+  if(!inherits(newdata, c("unmarkedFrame", "data.frame", "RasterLayer", "RasterStack", "SpatRaster"))){
+    stop("newdata must be unmarkedFrame, data.frame, RasterLayer, RasterStack, or SpatRaster", call.=FALSE)
+  }
+  invisible(TRUE)
+}
+
+# Nested functions in formulas result in incorrect predictions.
+# This seems to be a problem with model.matrix and not something we can fix.
+check_nested_formula_functions <- function(formula){
+  check <- 
+    grepl("I(scale(", safeDeparse(formula), fixed=TRUE) |
+    grepl("scale(I(", safeDeparse(formula), fixed=TRUE)
+  if(check){
+    warning("Predictions based on a model with nested functions in the formula like I(scale(...)^2) are probably incorrect. Scale the covariates manually instead.", call.=FALSE)
+  }
+  invisible()
+}
+
+# Generating inputs from an unmarked frame (e.g. when no newdata) using getDesign
+predict_inputs_from_umf <- function(object, type, newdata, na.rm, re.form){
+
+  dm <- getDesign(newdata, object@formlist, na.rm = na.rm)
+  select_names <- paste0(c("X_", "Z_", "offset_"), type)
+  select <- dm[select_names]
+  names(select) <- c("X", "Z", "offset")
+
+  # Scalar parameters like scale, alpha
+  if(type %in% names(object) & !type %in% names(object@formlist)){
+    return(list(X = matrix(1, nrow=1, ncol=1), offset = NULL))
+  }
+
+  # Add random effects matrix if needed
+  if(is.null(re.form) & has_random(object@formlist[[type]])){
+    stopifnot(!is.null(select$Z))
+    select$X <- cbind(select$X, select$Z)
+  }
+
+  list(X = select$X, offset = select$offset)
+}
+
+# Convert a raster into a data frame to use as newdata
+newdata_from_raster <- function(object, vars){
+  if(inherits(object, "Raster")){
+    if(!requireNamespace("raster", quietly=TRUE)) stop("raster package required", call.=FALSE)
+    nd <- raster::as.data.frame(object)
+    # Handle factor rasters
+    is_fac <- raster::is.factor(object)
+    rem_string <- paste(paste0("^",names(object),"_"), collapse="|")
+    names(nd)[is_fac] <- gsub(rem_string, "", names(nd)[is_fac])
+  } else if(inherits(object, "SpatRaster")){
+    if(!requireNamespace("terra", quietly=TRUE)) stop("terra package required", call.=FALSE)
+    nd <- terra::as.data.frame(object, na.rm=FALSE)
+  }
+  # Check if variables are missing
+  no_match <- vars[! vars %in% names(nd)]
+  if(length(no_match) > 0){
+    stop(paste0("Variable(s) ",paste(no_match, collapse=", "), " not found in raster(s)"),
+         call.=FALSE)
+  }
+  return(nd)
+}
+
+# Convert predict output into a raster
+raster_from_predict <- function(pr, object, appendData){
+  if(inherits(object, "Raster")){
+    new_rast <- data.frame(raster::coordinates(object), pr)
+    new_rast <- raster::stack(raster::rasterFromXYZ(new_rast))
+    raster::crs(new_rast) <- raster::crs(object)
+    if(appendData) new_rast <- raster::stack(new_rast, object)
+  } else if(inherits(object, "SpatRaster")){
+    new_rast <- data.frame(terra::crds(object, na.rm=FALSE), pr)
+    new_rast <- terra::rast(new_rast, type="xyz")
+    terra::crs(new_rast) <- terra::crs(object)
+    if(appendData) new_rast <- c(new_rast, object)
+  }
+  new_rast
+}
+
 # Function to make model matrix and offset from formula, newdata and original data
 # This function makes sure factor levels in newdata match, and that
 # any functions in the formula are handled properly (e.g. scale)
 make_mod_matrix <- function(formula, data, newdata, re.form=NULL){
+  check_nested_formula_functions(formula)
   form_nobars <- reformulas::nobars(formula)
   mf <- model.frame(form_nobars, data, na.action=stats::na.pass)
   X.terms <- stats::terms(mf)
@@ -85,155 +170,8 @@ make_mod_matrix <- function(formula, data, newdata, re.form=NULL){
   list(X=X, offset=offset)
 }
 
-
-# Fit-type specific methods----------------------------------------------------
-
-# Fit type-specific methods to generate different components of prediction
-# 1. check_predict_arguments(): Check arguments
-# 2. predict_inputs_from_umf(): Generating inputs from an unmarked
-#    frame (e.g. when no newdata) using getDesign
-# 3. get_formula: Get formula for submodel type
-# 4. get_orig_data(): Get original dataset for use in building model frame
-# 5. predict_by_chunk(): Take inputs and generate predictions
-# Basic methods are shown below; fit type-specific methods in their own sections
-
-setGeneric("check_predict_arguments", function(object, ...){
-  standardGeneric("check_predict_arguments")
-})
-
-setMethod("check_predict_arguments", "unmarkedFit",
-  function(object, type, newdata, ...){
-  # Check if type is supported (i.e., is it in names(object)?)
-  check_type(object, type)
-
-  # Check newdata class
-  if(!inherits(newdata, c("unmarkedFrame", "data.frame", "RasterLayer", "RasterStack", "SpatRaster"))){
-    stop("newdata must be unmarkedFrame, data.frame, RasterLayer, RasterStack, or SpatRaster", call.=FALSE)
-  }
-  invisible(TRUE)
-})
-
-# Check if predict type is valid
-check_type <- function(mod, type){
-  opts <- names(mod)
-  if(type %in% opts) return(invisible(TRUE))
-  stop("Valid types are ", paste(opts, collapse=", "), call.=FALSE)
-}
-
-# Get X and offset when newdata is umf
-setGeneric("predict_inputs_from_umf", function(object, ...){
-  standardGeneric("predict_inputs_from_umf")
-})
-
-setMethod("predict_inputs_from_umf", "unmarkedFit",
-  function(object, type, newdata, na.rm, re.form){
-  designMats <- getDesign(newdata, object@formula, na.rm = na.rm)
-  if(type == "state") list_els <- c("X","Z_state","X.offset")
-  if(type == "det") list_els <- c("V","Z_det","V.offset")
-  if(type == "scale"){ # no covariates
-    n <- nrow(designMats$V)
-    return(list(X = matrix(1, nrow=n, ncol=1), offset = rep(0, n)))
-  }
-
-  X <- designMats[[list_els[1]]]
-  if(is.null(re.form)) X <- cbind(X, designMats[[list_els[2]]])
-  offset <- designMats[[list_els[3]]]
-
-  list(X=X, offset=offset)
-})
-
-# Get correct individual formula based on type
-setGeneric("get_formula", function(object, type, ...){
-  standardGeneric("get_formula")
-})
-
-setMethod("get_formula", "unmarkedFit", function(object, type, ...){
-  if(type == "state"){
-    return(as.formula(paste("~", object@formula[3], sep="")))
-  } else if(type == "det"){
-    return(as.formula(object@formula[[2]]))
-  }
-  NULL
-})
-
-# When newdata is data.frame/raster, get original dataset
-# For use in building correct model frame
-setGeneric("get_orig_data", function(object, type, ...){
-  standardGeneric("get_orig_data")
-})
-
-# Note that by default, final year of yearlySiteCov data at each site is dropped
-# Because transition probabilities are not estimated for final year
-# this is appropriate for dynamic models but not temporary emigration models
-# for which the drop_final should be FALSE
-setMethod("get_orig_data", "unmarkedFit", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=TRUE)
-  datatype <- switch(type, state='site_covs', det='obs_covs')
-  clean_covs[[datatype]]
-})
-
-# Convert NULL data frames to dummy data frames of proper dimension
-# Add site covs to yearlysitecovs, ysc to obs covs, etc.
-# Drop final year of ysc if necessary
-clean_up_covs <- function(object, drop_final=FALSE){
-  M <- numSites(object)
-  R <- obsNum(object)
-  T <- 1
-  J <- R
-  is_mult <- methods::.hasSlot(object, "numPrimary")
-  if(is_mult){
-    T <- object@numPrimary
-    J <- R/T
-  }
-
-  sc <- siteCovs(object)
-  if(is.null(sc)) sc <- data.frame(.dummy=rep(1,M))
-  out <- list(site_covs=sc)
-
-  if(is_mult){
-    ysc <- yearlySiteCovs(object)
-    if(is.null(ysc)) ysc <- data.frame(.dummy2=rep(1,M*T))
-    ysc <- cbind(ysc, sc[rep(1:M, each=T),,drop=FALSE])
-  }
-
-  if(methods::.hasSlot(object, "obsCovs")){
-    oc <- obsCovs(object)
-    if(is.null(oc)) oc <- data.frame(.dummy3=rep(1,M*T*J))
-    if(is_mult){
-      oc <- cbind(oc, ysc[rep(1:(M*T), each=J),,drop=FALSE])
-    } else {
-      oc <- cbind(oc, sc[rep(1:M, each=J),,drop=FALSE])
-    }
-    out$obs_covs=oc
-  }
-
-  if(is_mult){
-    if(drop_final & (T > 1)){
-      # Drop final year of data at each site
-      # Also drop factor levels only found in last year of data
-      ysc <- drop_final_year(ysc, M, T)
-    }
-    out$yearly_site_covs <- ysc
-  }
-
-  out
-}
-
-#Remove data in final year of yearlySiteCovs (replacing with NAs)
-#then drop factor levels found only in that year
-drop_final_year <- function(dat, nsites, nprimary){
-  dat[seq(nprimary, nsites*nprimary, by=nprimary), ] <- NA
-  dat <- lapply(dat, function(x) x[,drop = TRUE])
-  as.data.frame(dat)
-}
-
-
 # Take inputs (most importantly model matrix and offsets) and generate prediction
 # done in chunks for speed, 70 was optimal after tests
-setGeneric("predict_by_chunk", function(object, ...){
-  standardGeneric("predict_by_chunk")
-})
-
 setMethod("predict_by_chunk", "unmarkedFit",
   function(object, type, level, xmat, offsets, chunk_size, backTransform=TRUE,
            re.form=NULL, ...){
@@ -273,59 +211,7 @@ setMethod("predict_by_chunk", "unmarkedFit",
   out
 })
 
-
-# Raster handling functions----------------------------------------------------
-
-# Convert a raster into a data frame to use as newdata
-newdata_from_raster <- function(object, vars){
-  if(inherits(object, "Raster")){
-    if(!requireNamespace("raster", quietly=TRUE)) stop("raster package required", call.=FALSE)
-    nd <- raster::as.data.frame(object)
-    # Handle factor rasters
-    is_fac <- raster::is.factor(object)
-    rem_string <- paste(paste0("^",names(object),"_"), collapse="|")
-    names(nd)[is_fac] <- gsub(rem_string, "", names(nd)[is_fac])
-  } else if(inherits(object, "SpatRaster")){
-    if(!requireNamespace("terra", quietly=TRUE)) stop("terra package required", call.=FALSE)
-    nd <- terra::as.data.frame(object, na.rm=FALSE)
-  }
-  # Check if variables are missing
-  no_match <- vars[! vars %in% names(nd)]
-  if(length(no_match) > 0){
-    stop(paste0("Variable(s) ",paste(no_match, collapse=", "), " not found in raster(s)"),
-         call.=FALSE)
-  }
-  return(nd)
-}
-
-raster_from_predict <- function(pr, object, appendData){
-  if(inherits(object, "Raster")){
-    new_rast <- data.frame(raster::coordinates(object), pr)
-    new_rast <- raster::stack(raster::rasterFromXYZ(new_rast))
-    raster::crs(new_rast) <- raster::crs(object)
-    if(appendData) new_rast <- raster::stack(new_rast, object)
-  } else if(inherits(object, "SpatRaster")){
-    new_rast <- data.frame(terra::crds(object, na.rm=FALSE), pr)
-    new_rast <- terra::rast(new_rast, type="xyz")
-    terra::crs(new_rast) <- terra::crs(object)
-    if(appendData) new_rast <- c(new_rast, object)
-  }
-  new_rast
-}
-
-
-# pcount methods---------------------------------------------------------------
-
-setMethod("check_predict_arguments", "unmarkedFitPCount",
-  function(object, type, newdata, ...){
-  if(type %in% c("psi", "alpha")){
-    stop(paste0(type, " is scalar. Use backTransform instead."), call.=FALSE)
-  }
-  methods::callNextMethod(object, type, newdata)
-})
-
 # Special predict approach for ZIP distribution in pcount
-# All other distributions use default method
 setMethod("predict_by_chunk", "unmarkedFitPCount",
   function(object, type, level, xmat, offsets, chunk_size, backTransform=TRUE,
            re.form=NULL, ...){
@@ -383,105 +269,6 @@ setMethod("predict_by_chunk", "unmarkedFitPCount",
                           backTransform, re.form, ...)
 })
 
-
-# colext methods---------------------------------------------------------------
-
-setMethod("predict_inputs_from_umf", "unmarkedFitColExt",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formula, na.rm = na.rm)
-  list_el <- switch(type, psi="W", col="X.gam", ext="X.eps", det="V")
-  # colext doesn't support offsets
-  list(X=designMats[[list_el]], offset=NULL)
-})
-
-setMethod("get_formula", "unmarkedFitColExt", function(object, type, ...){
-  switch(type, psi=object@psiformula, col=object@gamformula,
-                     ext=object@epsformula, det=object@detformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitColExt", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=TRUE)
-  datatype <- switch(type, psi='site_covs', col='yearly_site_covs',
-                     ext='yearly_site_covs', det='obs_covs')
-  clean_covs[[datatype]]
-})
-
-
-# occuFP methods---------------------------------------------------------------
-
-setMethod("predict_inputs_from_umf", "unmarkedFitOccuFP",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@detformula, object@FPformula,
-                          object@Bformula, object@stateformula, na.rm=na.rm)
-  X_idx <- switch(type, state="X", det="V", fp="U", b="W")
-  off_idx <- paste0(X_idx, ".offset")
-  list(X=designMats[[X_idx]], offset=designMats[[off_idx]])
-})
-
-setMethod("get_formula", "unmarkedFitOccuFP", function(object, type, ...){
-  switch(type, state=object@stateformula, det=object@detformula,
-         b=object@Bformula, fp=object@FPformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitOccuFP", function(object, type, ...){
-  # Get obs data if fp, b, or det
-  new_type <- ifelse(type %in% c("fp", "b"), "det", type)
-  methods::callNextMethod(object, new_type, ...)
-})
-
-
-# Dail-Madsen model methods----------------------------------------------------
-
-# Includes unmarkedFitPCO, unmarkedFitMMO, unmarkedFitDSO
-
-setMethod("check_predict_arguments", "unmarkedFitDailMadsen",
-  function(object, type, newdata, ...){
-  if(type %in% c("psi", "alpha", "scale")){
-    stop(paste0(type, " is scalar. Use backTransform instead."), call.=FALSE)
-  }
-  dynamics <- object@dynamics
-  immigration <- tryCatch(object@immigration, error=function(e) FALSE)
-  if(identical(dynamics, "notrend") & identical(type, "gamma"))
-    stop("gamma is a derived parameter for this model: (1-omega)*lambda")
-  if(identical(dynamics, "trend") && identical(type, "omega"))
-    stop("omega is not a parameter in the dynamics='trend' model")
-  if(!immigration && identical(type, "iota"))
-    stop("iota is not a parameter in the immigration=FALSE model")
-  methods::callNextMethod(object, type, newdata)
-})
-
-setMethod("predict_inputs_from_umf", "unmarkedFitDailMadsen",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formula, na.rm=na.rm)
-  X_idx <- switch(type, lambda="Xlam", gamma="Xgam", omega="Xom",
-                  iota="Xiota", det="Xp")
-  off_idx <- paste0(X_idx, ".offset")
-  list(X=designMats[[X_idx]], offset=designMats[[off_idx]])
-})
-
-setMethod("get_formula", "unmarkedFitDailMadsen", function(object, type, ...){
-  fl <- object@formlist
-  switch(type, lambda=fl$lambdaformula, gamma=fl$gammaformula,
-         omega=fl$omegaformula, iota=fl$iotaformula, det=fl$pformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitDailMadsen", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=TRUE)
-  datatype <- switch(type, lambda='site_covs', gamma='yearly_site_covs',
-                     omega='yearly_site_covs', iota='yearly_site_covs',
-                     det='obs_covs')
-  clean_covs[[datatype]]
-})
-
-# This method differs for DSO
-setMethod("get_orig_data", "unmarkedFitDSO", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=TRUE)
-  datatype <- switch(type, lambda='site_covs', gamma='yearly_site_covs',
-                     omega='yearly_site_covs', iota='yearly_site_covs',
-                     det='yearly_site_covs')
-  clean_covs[[datatype]]
-})
-
 # Special handling for ZIP distribution
 setMethod("predict_by_chunk", "unmarkedFitDailMadsen",
   function(object, type, level, xmat, offsets, chunk_size, backTransform=TRUE,
@@ -501,102 +288,70 @@ setMethod("predict_by_chunk", "unmarkedFitDailMadsen",
                           backTransform, re.form, ...)
 })
 
+# IDS--------------------------------------------------------------------------
 
-# Temporary emigration models--------------------------------------------------
+# Uses IDS_convert_class to allow pass-through to prediction using an unmarkedFitDS object
+setMethod("predict_internal", "unmarkedFitIDS", function(object, type, newdata,
+          backTransform=TRUE, na.rm=FALSE, appendData=FALSE, level=0.95, re.form=NULL, ...){
+  stopifnot(type %in% names(object))
 
-# All inherit from GMM so only one set of methods is required
-# (except GDR which has its own predict method right now)
+  # Special case of phi and  no newdata
+  # We need a separate prediction for each detection dataset
+  if(type == "phi" & missing(newdata)){
 
-setMethod("predict_inputs_from_umf", "unmarkedFitGMM",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formula, na.rm=na.rm)
-  X_idx <- switch(type, lambda="Xlam", phi="Xphi", det="Xdet")
-  off_idx <- paste0(X_idx, ".offset")
-  list(X=designMats[[X_idx]], offset=designMats[[off_idx]])
-})
+    dists <- names(object)[names(object) %in% c("ds", "pc", "oc")]
+    out <- lapply(dists, function(x){
+      conv <- IDS_convert_class(object, "phi", ds_type=x)
+      predict(conv, "det", backTransform=backTransform, appendData=appendData,
+              level=level, ...)
+    })
+    names(out) <- dists
 
-setMethod("get_formula", "unmarkedFitGMM", function(object, type, ...){
-  fl <- object@formlist
-  switch(type, lambda=fl$lambdaformula, phi=fl$phiformula, det=fl$pformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitGMM", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=FALSE)
-  datatype <- switch(type, lambda='site_covs', phi='yearly_site_covs',
-                     det='obs_covs')
-  clean_covs[[datatype]]
-})
-
-
-# occuTTD----------------------------------------------------------------------
-
-# Identical to colext
-
-setMethod("predict_inputs_from_umf", "unmarkedFitOccuTTD",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formula, na.rm = na.rm)
-  list_el <- switch(type, psi="W", col="X.gam", ext="X.eps", det="V")
-  list(X=designMats[[list_el]], offset=NULL)
-})
-
-setMethod("get_formula", "unmarkedFitOccuTTD", function(object, type, ...){
-  switch(type, psi=object@psiformula, col=object@gamformula,
-                     ext=object@epsformula, det=object@detformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitOccuTTD", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=TRUE)
-  datatype <- switch(type, psi='site_covs', col='yearly_site_covs',
-                     ext='yearly_site_covs', det='obs_covs')
-  clean_covs[[datatype]]
+  } else { # Regular situation
+    conv <- IDS_convert_class(object, type)
+    type <- switch(type, lam="state", ds="det", pc="det", oc="det", phi="det")
+    out <- predict(conv, type=type, newdata=newdata, backTransform=backTransform, appendData=appendData,
+                   level=level, ...)
+  }
+  out
 })
 
 
-# nmixTTD----------------------------------------------------------------------
+# occuComm---------------------------------------------------------------------
 
-setMethod("predict_inputs_from_umf", "unmarkedFitNmixTTD",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formula, na.rm = na.rm)
-  list_el <- switch(type, state="W", det="V")
-  list(X=designMats[[list_el]], offset=NULL)
-})
+setMethod("predict_internal", "unmarkedFitOccuComm",
+  function(object, type, newdata, backTransform = TRUE, na.rm = TRUE,
+           appendData = FALSE, level=0.95, re.form=NULL, ...){
 
-setMethod("get_formula", "unmarkedFitNmixTTD", function(object, type, ...){
-  switch(type, state=object@stateformula, det=object@detformula)
-})
+  na.rm <- FALSE
+  S <- length(object@data@ylist)
+  M <- numSites(object@data)
+  J <- obsNum(object@data)
+  new_object <- object
+  newform <- multispeciesFormula(object@formula, object@data@speciesCovs)
+  new_object@formula <- newform$formula
+  new_object@data <- process_multispecies_umf(object@data, newform$covs)
+  new_object <- as(new_object, "unmarkedFitOccu")
 
-setMethod("get_orig_data", "unmarkedFitNmixTTD", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=FALSE)
-  datatype <- switch(type, state='site_covs', det='obs_covs')
-  clean_covs[[datatype]]
-})
+  if(missing(newdata)) newdata <- NULL
+  pr <- predict(new_object, type=type, newdata=newdata, backTransform=backTransform,
+                na.rm=na.rm, appendData=appendData, level=level, re.form=re.form, ...)
 
+  if(!is.null(newdata)){ # if using newdata, return now
+    return(pr) 
+  }
 
-# gdistremoval-----------------------------------------------------------------
-
-setMethod("predict_inputs_from_umf", "unmarkedFitGDR",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formlist)
-  if(type == "lambda") list_els <- c("Xlam","Zlam")
-  if(type == "phi") list_els <- c("Xphi","Zphi")
-  if(type == "dist") list_els <- c("Xdist","Zdist")
-  if(type == "rem") list_els <- c("Xrem", "Zrem")
-  X <- designMats[[list_els[1]]]
-  if(is.null(re.form)) X <- cbind(X, designMats[[list_els[2]]])
-  list(X=X, offset=NULL)
-})
-
-setMethod("get_formula", "unmarkedFitGDR", function(object, type, ...){
-  fl <- object@formlist
-  switch(type, lambda=fl$lambdaformula, phi=fl$phiformula,
-         dist=fl$distanceformula, rem=fl$removalformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitGDR", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=FALSE)
-  datatype <- switch(type, lambda='site_covs', phi='yearly_site_covs',
-                     dist='yearly_site_covs', rem='obs_covs')
-  clean_covs[[datatype]]
+  if(type == "state"){
+    inds <- split(1:nrow(pr), rep(1:length(object@data@ylist), each=M))
+  } else if(type == "det"){
+    inds <- split(1:nrow(pr), rep(1:length(object@data@ylist), each=M*J))
+  }
+  names(inds) <- names(object@data@ylist)
+  lapply(inds, function(x){ 
+         out <- pr[x,,drop=FALSE]
+         rownames(out) <- NULL
+         out
+  })
 })
 
 
@@ -604,13 +359,6 @@ setMethod("get_orig_data", "unmarkedFitGDR", function(object, type, ...){
 
 # bespoke predict method since it has numerious unusual options
 # and requires bootstrapping
-
-# This method is used by simulate but not by predict
-setMethod("get_formula", "unmarkedFitOccuMulti", function(object, type, ...){
-  switch(type, state=object@stateformulas,
-               det=object@detformulas)
-})
-
 setMethod("predict", "unmarkedFitOccuMulti",
      function(object, type, newdata,
               level=0.95, species=NULL, cond=NULL, nsims=100,
@@ -640,7 +388,7 @@ setMethod("predict", "unmarkedFitOccuMulti",
 
   maxOrder <- object@call$maxOrder
   if(is.null(maxOrder)) maxOrder <- length(object@data@ylist)
-  dm <- getDesign(object@data,object@detformulas,object@stateformulas,
+  dm <- getDesign(object@data, object@formlist,
                   maxOrder, na.rm=F, newdata=newdata, type=type)
 
   params <- coef(object)
@@ -804,13 +552,6 @@ setMethod("predict", "unmarkedFitOccuMulti",
 # occuMS-----------------------------------------------------------------------
 
 # bespoke predict method since it requires bootstrapping
-
-# This method is used by simulate by not by predict
-setMethod("get_formula", "unmarkedFitOccuMS", function(object, type, ...){
-  switch(type, psi=object@psiformulas, phi=object@phiformulas,
-               det=object@detformulas)
-})
-
 setMethod("predict", "unmarkedFitOccuMS",
      function(object, type, newdata, level=0.95, nsims=100, ...)
 {
@@ -837,8 +578,7 @@ setMethod("predict", "unmarkedFitOccuMS",
   }
 
   S <- object@data@numStates
-  gd <- getDesign(object@data,object@psiformulas,object@phiformulas,
-                  object@detformulas, object@parameterization, na.rm=F,
+  gd <- getDesign(object@data, object@formlist, object@parameterization, na.rm=F,
                   newdata=newdata, type=type)
 
   #Index guide used to organize p values

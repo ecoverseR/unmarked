@@ -4,7 +4,7 @@
 
 \encoding{UTF-8}
 
-\title{Fit the occupancy model using count dta}
+\title{Fit the occupancy model using count data}
 
 \usage{
 occuCOP(data, 

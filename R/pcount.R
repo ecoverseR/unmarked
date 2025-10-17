@@ -14,21 +14,21 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
         stop("Data is not an unmarkedFramePCount object.")
 
     engine <- match.arg(engine, c("C", "R", "TMB"))
-    if(any(sapply(split_formula(formula), has_random))) engine <- "TMB"
+    formulas <- split_formula(formula)
+    names(formulas) <- c("det", "state")
+    if(any(sapply(formulas, has_random))) engine <- "TMB"
     if(identical(mixture, "ZIP") & engine == "R")
         stop("ZIP mixture not available for R engine")
 
     # Generate design matrices-------------------------------------------------
-    designMats <- getDesign(data, formula)
-    X <- designMats$X; V <- designMats$V; y <- designMats$y
-    X.offset <- designMats$X.offset; V.offset <- designMats$V.offset
-    Z_state <- designMats$Z_state; Z_det <- designMats$Z_det
+    dm <- getDesign(data, formulas)
+    y <- dm$y
 
     # Set up parameter names and indices---------------------------------------
-    lamParms <- colnames(X)
-    detParms <- colnames(V)
-    nDP <- ncol(V)
-    nAP <- ncol(X)
+    lamParms <- colnames(dm$X_state)
+    detParms <- colnames(dm$X_det)
+    nDP <- ncol(dm$X_det)
+    nAP <- ncol(dm$X_state)
     lamIdx <- 1:nAP
     pIdx <- (nAP+1):(nAP+nDP)
     n_param <- c(nAP, nDP, ifelse(mixture != "P", 1, 0))
@@ -59,8 +59,8 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
         ijk <- expand.grid(k = 0:K, j = 1:J, i = 1:M)
         ijk.to.ikj <- with(ijk, order(i, k, j))
         nll <- function(parms) {
-            theta.i <- exp(X %*% parms[lamIdx] + X.offset)
-            p.ij <- plogis(V %*% parms[pIdx] + V.offset)
+            theta.i <- exp(dm$X_state %*% parms[lamIdx] + dm$offset_state)
+            p.ij <- plogis(dm$X_det %*% parms[pIdx] + dm$offset_det)
             theta.ik <- rep(theta.i, each = K + 1)
             p.ijk <- rep(p.ij, each = K + 1)
 
@@ -83,8 +83,8 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
       }
     } else if(identical(engine, "C")) {
         nll <- function(parms) {
-          nll_pcount(parms, n_param, y, X, V, X.offset, V.offset, K, Kmin,
-                     mixture_code, threads)
+          nll_pcount(parms, n_param, y, dm$X_state, dm$X_det, dm$offset_state, dm$offset_det, 
+                     K, Kmin, mixture_code, threads)
         }
     }
 
@@ -117,13 +117,12 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
     } else if(engine == "TMB"){
 
       # Set up TMB input data
-      forms <- split_formula(formula)
       obs_all <- add_covariates(obsCovs(data), siteCovs(data), length(getY(data)))
-      inps <- get_ranef_inputs(forms, list(det=obs_all, state=siteCovs(data)),
-                               list(V, X), designMats[c("Z_det","Z_state")])
+      inps <- get_ranef_inputs(formulas, list(det=obs_all, state=siteCovs(data)),
+                               list(dm$X_det, dm$X_state), dm[c("Z_det","Z_state")])
 
       tmb_dat <- c(list(y=y, K=K, Kmin=Kmin, mixture=mixture_code,
-                      offset_state=X.offset, offset_det=V.offset), inps$data)
+                      offset_state=dm$offset_state, offset_det=dm$offset_det), inps$data)
 
       tmb_param <- c(inps$pars, list(beta_scale=rep(0,0)))
       if(mixture_code > 1) tmb_param$beta_scale <- rep(0,1)
@@ -146,8 +145,8 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
       }
 
       # Organize random-effect estimates from TMB output
-      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", forms[[2]], siteCovs(data))
-      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", forms[[1]], obs_all)
+      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", formulas$state, siteCovs(data))
+      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", formulas$det, obs_all)
 
     }
 
@@ -183,8 +182,8 @@ pcount <- function(formula, data, K, mixture = c("P", "NB", "ZIP"), starts,
 
     # Create unmarkedFit object------------------------------------------------
     umfit <- new("unmarkedFitPCount", fitType="pcount", call=match.call(),
-                 formula = formula, data = data,
-                 sitesRemoved = designMats$removed.sites,
+                 formula = formula, formlist = formulas, data = data,
+                 sitesRemoved = dm$removed.sites,
                  estimates = estimateList, AIC = fmAIC, opt = fm,
                  negLogLike = fm$value,
                  nllFun = nll, K = K, mixture = mixture, TMB=tmb_mod)

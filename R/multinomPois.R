@@ -7,25 +7,21 @@ multinomPois <- function(formula, data, starts, method = "BFGS",
     if(!is(data, "unmarkedFrameMPois"))
 		    stop("Data is not a data frame or unmarkedFrame.")
     engine <- match.arg(engine, c("C", "R", "TMB"))
-    if(any(sapply(split_formula(formula), has_random))) engine <- "TMB"
-    designMats <- getDesign(data, formula)
-    X <- designMats$X; V <- designMats$V; y <- designMats$y
-    X.offset <- designMats$X.offset; V.offset <- designMats$V.offset
-    if (is.null(X.offset)) {
-        X.offset <- rep(0, nrow(X))
-        }
-    if (is.null(V.offset)) {
-        V.offset <- rep(0, nrow(V))
-        }
+    formulas <- split_formula(formula)
+    names(formulas) <- c("det", "state")
+    if(any(sapply(formulas, has_random))) engine <- "TMB"
+    dm <- getDesign(data, formulas)
+    y <- dm$y
+
     J <- ncol(y)
     R <- obsNum(data)
     M <- nrow(y)
     piFun <- data@piFun
 
-    lamParms <- colnames(X)
-    detParms <- colnames(V)
-    nDP <- ncol(V)
-    nAP <- ncol(X)
+    lamParms <- colnames(dm$X_state)
+    detParms <- colnames(dm$X_det)
+    nDP <- ncol(dm$X_det)
+    nAP <- ncol(dm$X_state)
     lamIdx <- 1:nAP
     pIdx <- (nAP+1):(nAP+nDP)
     nP <- nDP + nAP
@@ -36,8 +32,8 @@ multinomPois <- function(formula, data, starts, method = "BFGS",
     navec <- is.na(yvec)
 
     nll_R <- function(parms) {
-        lambda <- exp(X %*% parms[1 : nAP] + X.offset)
-        p <- plogis(V %*% parms[(nAP + 1) : nP] + V.offset)
+        lambda <- exp(dm$X_state %*% parms[1 : nAP] + dm$offset_state)
+        p <- plogis(dm$X_det %*% parms[(nAP + 1) : nP] + dm$offset_det)
         p.matrix <- matrix(p, M, R, byrow = TRUE)
         pi <- do.call(piFun, list(p = p.matrix))
         logLikeSite <- dpois(y, matrix(lambda, M, J) * pi, log = TRUE)
@@ -48,7 +44,7 @@ multinomPois <- function(formula, data, starts, method = "BFGS",
     nll_C <- function(params) {
         nll_multinomPois(
             params,piFun,
-            X, X.offset, V, V.offset,
+            dm$X_state, dm$offset_state, dm$X_det, dm$offset_det,
             yC, navecC, nP,nAP
         )
     }
@@ -83,18 +79,17 @@ multinomPois <- function(formula, data, starts, method = "BFGS",
 
     } else if(engine == "TMB"){
 
-      forms <- split_formula(formula)
       obs_all <- add_covariates(obsCovs(data), siteCovs(data), numSites(data)*obsNum(data))
-      inps <- get_ranef_inputs(forms, list(det=obs_all, state=siteCovs(data)),
-                               list(V, X), designMats[c("Z_det","Z_state")])
+      inps <- get_ranef_inputs(formulas, list(det=obs_all, state=siteCovs(data)),
+                               list(dm$X_det, dm$X_state), dm[c("Z_det","Z_state")])
 
       if(!piFun%in%c('doublePiFun','removalPiFun','depDoublePiFun')){
         stop("Custom pi functions are not supported by TMB engine.")
       }
       pifun_type <- switch(piFun, removalPiFun={0}, doublePiFun={1},
                            depDoublePiFun={2})
-      tmb_dat <- c(list(y=y, pifun_type=pifun_type, offset_state=X.offset,
-                        offset_det=V.offset), inps$data)
+      tmb_dat <- c(list(y=y, pifun_type=pifun_type, offset_state=dm$offset_state,
+                        offset_det=dm$offset_det), inps$data)
 
       # Fit model in TMB
       if(missing(starts)) starts <- NULL
@@ -110,8 +105,8 @@ multinomPois <- function(formula, data, starts, method = "BFGS",
       det_coef <- get_coef_info(tmb_out$sdr, "det", detParms, pIdx)
 
       # Organize random-effect estimates from TMB output
-      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", forms[[2]], siteCovs(data))
-      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", forms[[1]], obs_all)
+      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", formulas$state, siteCovs(data))
+      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", formulas$det, obs_all)
 
     }
 
@@ -129,8 +124,8 @@ multinomPois <- function(formula, data, starts, method = "BFGS",
         det=detEstimates))
 
     umfit <- new("unmarkedFitMPois", fitType = "multinomPois",
-        call = match.call(), formula = formula, data = data,
-        estimates = estimateList, sitesRemoved = designMats$removed.sites,
+        call = match.call(), formula = formula, formlist = formulas, data = data,
+        estimates = estimateList, sitesRemoved = dm$removed.sites,
         AIC = fmAIC, opt = fm, negLogLike = fm$value, nllFun = nll, TMB=tmb_mod)
 
     return(umfit)

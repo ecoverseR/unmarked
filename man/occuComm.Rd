@@ -1,7 +1,7 @@
 \name{occuComm}
 \alias{occuComm}
 
-\title{Fit a community occupancy model}
+\title{Fit a community occupancy model with species-level random effects}
 
 \usage{
   occuComm(formula, data, starts, method="BFGS", se=TRUE, ...)

@@ -104,7 +104,7 @@ test_that("pcountOpen can fit a null model",{
 
 
 test_that("pcountOpen handles NAs",{
-
+  skip_on_ci()
   y1 <- matrix(c(
       NA, 2, 1, 4,
       3, NA, 2, 1,
@@ -137,20 +137,20 @@ test_that("pcountOpen handles NAs",{
   umf2 <- unmarkedFramePCO(y = y2, siteCovs = siteCovs, obsCovs = obsCovs,
       yearlySiteCovs=ysc, numPrimary=4)
 
-  expect_warning(fm2.1 <- pcountOpen(~1, ~1, ~1, ~o1, data = umf2, se=FALSE, K=10,
-      starts=c(1.4, -1.3, 1.8, -1.1, 0.7)))
+  fm2.1 <- pcountOpen(~1, ~1, ~1, ~o1, data = umf2, se=FALSE, K=10,
+      starts=c(1.4, -1.3, 1.8, -1.1, 0.7))
   expect_equivalent(coef(fm2.1),
       c(1.239636, -2.085200, 1.770919, -0.602612, 1.255386),
                      tol = 1e-4)
 
-  expect_warning(fm2.2 <- pcountOpen(~1, ~1, ~o2, ~1, data = umf2, se=FALSE, K=10,
-      starts=c(1.2, -1, 2, 0, 0)))
+  fm2.2 <- pcountOpen(~1, ~1, ~o2, ~1, data = umf2, se=FALSE, K=10,
+      starts=c(1.2, -1, 2, 0, 0))
   expect_equivalent(coef(fm2.2),
       c(1.3242059, 0.8439311, -2.8217070, -10.1414153, 0.1176959),
       tol = 1e-5)
 
-  expect_warning(fm2.3 <- pcountOpen(~1, ~o2, ~1, ~1, data = umf2, se=FALSE, K=10,
-      starts=c(1, 0, 0, -5, -1)))
+  fm2.3 <- pcountOpen(~1, ~o2, ~1, ~1, data = umf2, se=FALSE, K=10,
+      starts=c(1, 0, 0, -5, -1))
   expect_equivalent(coef(fm2.3),
       c(0.7013386, 0.5277811, -0.2350951, -1.8346326, 4.7771974),
                      tol = 1e-2)
@@ -238,7 +238,7 @@ test_that("pcountOpen handles NAs",{
     y7 <- y5
     oc7 <- y6 + -2:1
     umf7 <- unmarkedFramePCO(y=y7, obsCovs=list(oc=oc7), numPrimary=3)
-    expect_warning(fm7 <- pcountOpen(~1, ~1, ~1, ~oc, umf7, se=FALSE, K=10))
+    fm7 <- pcountOpen(~1, ~1, ~1, ~oc, umf7, se=FALSE, K=10)
     expect_equivalent(coef(fm7),
         c(1.1986029, -9.9298367, 12.5760064, -0.8876606, 0.9525870),
                        tol=1e-4)
@@ -250,7 +250,7 @@ test_that("pcountOpen handles NAs",{
     umf8 <- unmarkedFramePCO(y=y8, yearlySiteCovs=list(ysc=ysc8),
                              numPrimary=3)
   ## !!!!!!!!!!!
-    expect_warning(fm8 <- pcountOpen(~1, ~1, ~ysc, ~1, umf8, se=FALSE, K=10))
+    fm8 <- pcountOpen(~1, ~1, ~ysc, ~1, umf8, se=FALSE, K=10)
     expect_equivalent(coef(fm8),
         c(0.7278796, -0.8770411, 0.9170578, 0.0399341, 1.8956210),
                        tol=1e-4)

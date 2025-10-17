@@ -114,6 +114,9 @@ test_that("gdistsamp with halfnorm keyfunction works",{
     })
     expect_equal(max(yt)+100, fm_C@K)
 
+    # Check error when provided K is too small
+    expect_error(gdistsamp(~1,~1,~1, umf, K=6), "larger than")
+
     #When output = density
     #fm_R <- gdistsamp(~1, ~1, ~1, umf, output="density", se=FALSE, engine="R")
     fm_C <- gdistsamp(~1, ~1, ~1, umf, output="density", se=FALSE, engine="C")
@@ -314,6 +317,8 @@ test_that("gdistsamp with uniform keyfunction works",{
     # R and C engines return same result
     fm_R <- gdistsamp(~par1, ~par2, ~1, umf, output="density",
                       keyfun="uniform", se=FALSE, engine="C", control=list(maxit=1))
+    actual_aic <- -2 * -fm_R@opt$value + 2 * length(fm_R@opt$par)
+    expect_equal(actual_aic, fm_R@AIC)
     fm_C <- gdistsamp(~par1, ~par2, ~1, umf, output="density",
                       keyfun="uniform", se=FALSE, engine="R", control=list(maxit=1))
     expect_equal(coef(fm_R), coef(fm_C))
@@ -642,12 +647,19 @@ test_that("gdistsamp handles NAs",{
                           tlength=rep(transect.length, R), numPrimary=T)
 
   # Fit the model
-  expect_warning(fm1 <- gdistsamp(~1, ~1, ~cov1, umf, keyfun="exp", output="density", se=FALSE))
+  fm1 <- gdistsamp(~1, ~1, ~cov1, umf, keyfun="exp", output="density", se=FALSE)
 
   # Check that getP works
   gp <- getP(fm1)
   expect_equivalent(dim(gp), c(R, T*J))
   expect_true(all(is.na(gp[1,11:15])))
+
+  # Check when site dropped
+  siteCovs(umf) <- data.frame(x = rnorm(30))
+  umf@siteCovs$x[30] <- NA
+  expect_warning(fm1 <- gdistsamp(~x, ~1, ~cov1, umf, keyfun="exp", output="density", se=FALSE))
+  expect_equal(fm1@sitesRemoved, 30)
+  expect_equal(fm1@AIC, 659.9704, tol=1e-4)
 })
 
 test_that("gdistsamp simulate method works",{

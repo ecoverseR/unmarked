@@ -1,7 +1,7 @@
 # R package unmarked
 
 <!-- badges: start -->
-[![R build status](https://github.com/biodiverse/unmarked/workflows/R-CMD-check/badge.svg)](https://github.com/biodiverse/unmarked/actions)
+[![R build status](https://github.com/ecoverseR/unmarked/workflows/R-CMD-check/badge.svg)](https://github.com/ecoverseR/unmarked/actions)
 [![CRAN status](https://www.r-pkg.org/badges/version/unmarked)](https://cran.r-project.org/package=unmarked)
 <!-- badges: end -->
 
@@ -19,14 +19,14 @@ The latest development version can be installed from Github:
 
 ```r
 install.packages("remotes")
-remotes::install_github("biodiverse/unmarked")
+remotes::install_github("ecoverseR/unmarked")
 ```
 
 ## Support
 
 Support is provided through the [unmarked Google group](http://groups.google.com/group/unmarked).
-The package [website](https://biodiverse.github.io/unmarked) has more information.
-You can report bugs [here](https://github.com/biodiverse/unmarked/issues), by posting to the Google group, or by emailing [the current maintainer](https://kenkellner.com).
+The package [website](https://ecoverseR.github.io/unmarked) has more information.
+You can report bugs [here](https://github.com/ecoverseR/unmarked/issues), by posting to the Google group, or by emailing [the current maintainer](https://kenkellner.com).
 
 ## Get Started
 

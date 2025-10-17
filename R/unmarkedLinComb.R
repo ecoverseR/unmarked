@@ -1,20 +1,3 @@
-
-setClass("unmarkedLinComb",
-         representation(parentEstimate = "unmarkedEstimate",
-                        estimate = "numeric",
-                        covMat = "matrix",
-                        covMatBS = "optionalMatrix",
-                        coefficients = "matrix"))
-
-setClass("unmarkedBackTrans",
-         representation(parentLinComb = "unmarkedLinComb",
-                        estimate = "numeric",
-                        covMat = "matrix",
-                        covMatBS = "optionalMatrix"))
-
-setClassUnion("linCombOrBackTrans",
-              c("unmarkedLinComb", "unmarkedBackTrans"))
-
 setMethod("show",
           signature(object = "unmarkedLinComb"),
           function(object) {

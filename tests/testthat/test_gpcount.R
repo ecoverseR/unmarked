@@ -64,7 +64,7 @@ test_that("gpcount function works", {
   expect_warning(umf <- unmarkedFrameGPC(y = y, siteCovs = siteCovs, obsCovs = obsCovs,
         yearlySiteCovs = yrSiteCovs, numPrimary=3))
 
-  expect_warning(fm <- gpcount(~x, ~yr, ~o1, data = umf, K=23))
+  fm <- gpcount(~x, ~yr, ~o1, data = umf, K=23)
   expect_equal(fm@sitesRemoved, integer(0))
   expect_equivalent(coef(fm),
         c(1.14754541, 0.44499137, -1.52079283, -0.08881542,
@@ -76,7 +76,7 @@ test_that("gpcount function works", {
   expect_true(all(is.na(gp[5,4:6])))
   expect_equal(as.vector(gp[1:2, 1:2]), c(0.9452,0.9445,0.9413,0.9404), tol=1e-4)
 
-  expect_warning(pr <- predict(fm, 'lambda'))
+  pr <- predict(fm, 'lambda')
   expect_equal(dim(pr), c(nrow(y), 4))
 
   nd <- data.frame(x=c(0,1))
@@ -115,7 +115,7 @@ test_that("gpcount function works", {
   expect_equal(pb@t.star[1], 24.06449, tol=1e-4)
   expect_is(pb, "parboot")
 
-  npb <- expect_warning(nonparboot(fm, B=2))
+  npb <- nonparboot(fm, B=2)
   expect_equal(length(npb@bootstrapSamples), 2)
   expect_equal(npb@bootstrapSamples[[1]]@AIC, 36.08938, tol=1e-4)
   v <- vcov(npb, method='nonparboot')

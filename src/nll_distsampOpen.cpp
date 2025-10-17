@@ -9,10 +9,10 @@ using namespace arma;
 
 // [[Rcpp::export]]
 double nll_distsampOpen(arma::ucube y, arma::imat yt,
-    arma::mat Xlam, arma::mat Xgam, arma::mat Xom, arma::mat Xsig, arma::mat Xiota,
+    arma::mat X_lambda, arma::mat X_gamma, arma::mat X_omega, arma::mat X_det, arma::mat X_iota,
     arma::vec beta, arma::umat bi,
-    arma::colvec Xlam_offset, arma::colvec Xgam_offset, arma::colvec Xom_offset,
-    arma::colvec Xsig_offset, arma::colvec Xiota_offset,
+    arma::colvec offset_lambda, arma::colvec offset_gamma, arma::colvec offset_omega,
+    arma::colvec offset_det, arma::colvec offset_iota,
     arma::imat ytna, int lk, std::string mixture,
     Rcpp::IntegerVector first, Rcpp::IntegerVector last, int first1,
     int M, int T, arma::imat delta, std::string dynamics, std::string survey,
@@ -28,7 +28,7 @@ double nll_distsampOpen(arma::ucube y, arma::imat yt,
 
   //Lambda
   vec beta_lam = beta.subvec(bi(0,0), bi(0,1));
-  vec lam = exp(Xlam*beta_lam + Xlam_offset) % A;
+  vec lam = exp(X_lambda*beta_lam + offset_lambda) % A;
 
   //Get 2nd abundance dist parameter set up if necessary
   double alpha = 0.0;
@@ -44,10 +44,10 @@ double nll_distsampOpen(arma::ucube y, arma::imat yt,
   if((fix != "omega") && (dynamics != "trend")) {
     vec beta_om = beta.subvec(bi(2,0), bi(2,1));
     if((dynamics == "ricker")  || (dynamics == "gompertz")){
-        omv = exp(Xom*beta_om + Xom_offset);
+        omv = exp(X_omega*beta_om + offset_omega);
     } else if((dynamics == "constant")  || (dynamics == "autoreg") ||
               (dynamics == "notrend")){
-        omv = 1.0/(1.0+exp(-1*(Xom*beta_om + Xom_offset)));
+        omv = 1.0/(1.0+exp(-1*(X_omega*beta_om + offset_omega)));
     }
   }
   omv.reshape(T-1, M);
@@ -60,7 +60,7 @@ double nll_distsampOpen(arma::ucube y, arma::imat yt,
     gam = (1-om) % lamMat;
   } else if (fix != "gamma") {
     vec beta_gam = beta.subvec(bi(1,0), bi(1,1));
-    mat gamv = exp(Xgam*beta_gam + Xgam_offset);
+    mat gamv = exp(X_gamma*beta_gam + offset_gamma);
     gamv.reshape(T-1, M);
     gam = trans(gamv);
   }
@@ -69,7 +69,7 @@ double nll_distsampOpen(arma::ucube y, arma::imat yt,
   mat sig(M, T);
   if(keyfun != "uniform"){
     vec beta_sig = beta.subvec(bi(3,0), bi(3,1));
-    mat sigv = exp(Xsig*beta_sig + Xsig_offset);
+    mat sigv = exp(X_det*beta_sig + offset_det);
     sigv.reshape(T, M);
     sig = trans(sigv);
   }
@@ -84,7 +84,7 @@ double nll_distsampOpen(arma::ucube y, arma::imat yt,
   mat iota = zeros(M,T-1);
   if(immigration){
     vec beta_iota = beta.subvec(bi(4,0), bi(4,1));
-    mat iotav = exp(Xiota*beta_iota + Xiota_offset);
+    mat iotav = exp(X_iota*beta_iota + offset_iota);
     iotav.reshape(T-1, M);
     iota = trans(iotav);
   }

@@ -10,7 +10,7 @@
 #}
 
 get_base_newdata <- function(object, type){
-  covs <- get_orig_data(object, type)
+  covs <- get_covariates(object, type)
   out <- lapply(covs, function(x){
     if(is.numeric(x)){
       return(median(x, na.rm=TRUE))
@@ -24,7 +24,7 @@ get_base_newdata <- function(object, type){
 }
 
 get_cov_seq <- function(covariate, object, type){
-  cov_values <- get_orig_data(object, type)[[covariate]]
+  cov_values <- get_covariates(object, type)[[covariate]]
   if(is.numeric(cov_values)){
     rng <- range(cov_values, na.rm=TRUE)
     return(seq(rng[1], rng[2], length.out=100))
@@ -34,8 +34,6 @@ get_cov_seq <- function(covariate, object, type){
     stop("Unknown covariate type")
   }
 }
-
-setGeneric("plotEffectsData", function(object, ...) standardGeneric("plotEffectsData"))
 
 setMethod("plotEffectsData", "unmarkedFit",
   function(object, type, covariate, level=0.95, ...){
@@ -55,7 +53,6 @@ setMethod("plotEffectsData", "unmarkedFit",
   pr
 })
 
-setGeneric("plotEffects", function(object, ...) standardGeneric("plotEffects"))
 
 setMethod("plotEffects", "unmarkedFit",
   function(object, type, covariate, level=0.95, ...){

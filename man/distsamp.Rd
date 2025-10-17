@@ -80,7 +80,7 @@ Sillett, S. and Chandler, R.B. and Royle, J.A. and Kery, M. and
 \seealso{\code{\link{unmarkedFrameDS}},
     \code{\link{unmarkedFit-class}} \code{\link{fitList}},
     \code{\link{formatDistData}}, \code{\link{parboot}},
-    \code{\link{sight2perpdist}}, \code{\link{detFuns}},
+    \code{\link{detFuns}},
     \code{\link{gdistsamp}}, \code{\link{ranef}}.
     Also look at vignette("distsamp").
   }

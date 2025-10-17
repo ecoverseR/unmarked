@@ -4,7 +4,7 @@
 \alias{plot,parboot,missing-method}
 \alias{show,parboot-method}
 
-\title{Parametric bootstrap method for \code{unmarked} models}
+\title{Parametric bootstrap for \code{unmarked} models}
 
 \description{Simulate datasets from a fitted model, refit the model, and
   generate a sampling distribution for a user-specified fit-statistic.}

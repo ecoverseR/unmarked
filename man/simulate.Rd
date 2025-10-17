@@ -4,7 +4,7 @@
 \alias{simulate,unmarkedFrame-method}
 \alias{simulate,character-method}
 
-\title{Data simulation in unmarked}
+\title{Simulate datasets from any \code{unmarked} model type}
 \description{
 Simulate data from a fitted model, or simulate an entirely new dataset
 from a study design defined by an \code{unmarkedFrame}.

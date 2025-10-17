@@ -56,10 +56,6 @@ get_nrandom <- function(formula, data){
   as.array(out)
 }
 
-has_random <- function(formula){
-  length(reformulas::findbars(formula)) > 0
-}
-
 sigma_names <- function(formula, data){
   if(!has_random(formula)) return(NA_character_)
   nms <- get_reTrms(formula, data)$cnms
@@ -275,9 +271,6 @@ setMethod("sigma", "unmarkedFit", function(object, type, level=0.95, ...){
 })
 
 
-setGeneric("randomTerms", function(object, ...) standardGeneric("randomTerms"))
-
-
 setMethod("randomTerms", "unmarkedEstimate", 
           function(object, level=0.95, addMean = FALSE, ...){
 
@@ -417,3 +410,21 @@ vcov_TMB <- function(object, type, fixedOnly){
   }
   v
 }
+
+# Check if various objects have random effects
+setMethod("has_random", "unmarkedEstimate", function(object){
+  methods::.hasSlot(object, "randomVarInfo") &&
+    length(object@randomVarInfo) > 0
+})
+
+setMethod("has_random", "unmarkedEstimateList", function(object){
+  any(sapply(object@estimates, has_random))
+})
+
+setMethod("has_random", "unmarkedFit", function(object){
+  has_random(object@estimates)
+})
+
+setMethod("has_random", "formula", function(object){
+  length(reformulas::findbars(object)) > 0
+})

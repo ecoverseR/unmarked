@@ -14,8 +14,8 @@ using namespace arma;
 // [[Rcpp::export]]
 double nll_gdistsamp(arma::vec beta, arma::uvec n_param, arma::vec y,
     int mixture, std::string keyfun, std::string survey,
-    arma::mat Xlam, arma::vec Xlam_offset, arma::vec A, arma::mat Xphi,
-    arma::vec Xphi_offset, arma::mat Xdet, arma::vec Xdet_offset, arma::vec db,
+    arma::mat X_lambda, arma::vec offset_lambda, arma::vec A, arma::mat X_phi,
+    arma::vec offset_phi, arma::mat X_det, arma::vec offset_det, arma::vec db,
     arma::mat a, arma::mat u, arma::vec w, arma::vec k, arma::vec lfac_k,
     arma::vec lfac_kmyt, arma::vec kmyt, arma::uvec Kmin, int threads){
 
@@ -23,27 +23,27 @@ double nll_gdistsamp(arma::vec beta, arma::uvec n_param, arma::vec y,
     omp_set_num_threads(threads);
   #endif
 
-  int M = Xlam.n_rows;
-  int T = Xphi.n_rows / M;
+  int M = X_lambda.n_rows;
+  int T = X_phi.n_rows / M;
   int R = y.size() / M;
   unsigned J = R / T;
   int lk = k.size();
   int K = lk - 1;
 
   //Abundance
-  const vec lambda = exp(Xlam * beta_sub(beta, n_param, 0) + Xlam_offset) % A;
+  const vec lambda = exp(X_lambda * beta_sub(beta, n_param, 0) + offset_lambda) % A;
   double log_alpha = beta_sub(beta, n_param, 4)(0); //length 1 vector
 
   //Availability
   vec phi = ones(M*T);
   if(T > 1){
-    phi = inv_logit(Xphi * beta_sub(beta, n_param, 1) + Xphi_offset);
+    phi = inv_logit(X_phi * beta_sub(beta, n_param, 1) + offset_phi);
   }
 
   //Detection
   vec det_param(M*T);
   if(keyfun != "uniform"){
-    det_param = exp(Xdet * beta_sub(beta, n_param, 2) + Xdet_offset);
+    det_param = exp(X_det * beta_sub(beta, n_param, 2) + offset_det);
   }
   double scale = exp(beta_sub(beta, n_param, 3)(0));
 

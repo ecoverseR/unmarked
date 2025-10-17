@@ -1,14 +1,4 @@
-setClass("unmarkedFrameGDR",
-  representation(
-    yDistance = "matrix",
-    yRemoval = "matrix",
-    survey = "character",
-    dist.breaks = "numeric",
-    unitsIn = "character",
-    period.lengths = "numeric"
-  ),
-  contains="unmarkedMultFrame"
-)
+
 
 unmarkedFrameGDR <- function(yDistance, yRemoval, numPrimary=1,
                                      siteCovs=NULL, obsCovs=NULL,
@@ -64,198 +54,6 @@ setAs("unmarkedFrameGDR", "data.frame", function(from){
   data.frame(yDistance, yRemoval, out)
 })
 
-setMethod("[", c("unmarkedFrameGDR", "numeric", "missing", "missing"),
-  function(x, i) {
-  M <- numSites(x)
-  T <- x@numPrimary
-
-  if(length(i) == 0) return(x)
-  if(any(i < 0) && any(i > 0))
-    stop("i must be all positive or all negative indices.")
-  if(all(i < 0)) { # if i is negative, then convert to positive
-    i <- (1:M)[i]
-  }
-
-  yDist <- x@yDistance
-  Rdist <- ncol(yDist)
-  Jdist <- Rdist / T
-  yRem <- x@yRemoval
-  Rrem <- ncol(yRem)
-  Jrem <- Rrem / T
-  sc <- siteCovs(x)
-  oc <- obsCovs(x)
-  ysc <- NULL
-  if(T > 1){
-    ysc <- yearlySiteCovs(x)
-  }
-
-  yDist <- yDist[i,,drop=FALSE]
-  yRem <- yRem[i,,drop=FALSE]
-
-  if(!is.null(sc)){
-    sc <- sc[i,,drop=FALSE]
-  }
-
-  if(!is.null(oc)){
-    site_idx <- rep(1:M, each=Rrem)
-    oc <- do.call("rbind", lapply(i, function(ind){
-      obsCovs(x)[site_idx == ind,,drop=FALSE]
-    }))
-  }
-
-  if(!is.null(ysc)){
-    site_idx <- rep(1:M, each=T)
-    ysc <- do.call("rbind", lapply(i, function(ind){
-      yearlySiteCovs(x)[site_idx == ind,,drop=FALSE]
-    }))
-  }
-
-  umf <- x
-  umf@y <- yRem
-  umf@yDistance <- yDist
-  umf@yRemoval <- yRem
-  umf@siteCovs <- sc
-  umf@obsCovs <- oc
-  umf@yearlySiteCovs <- ysc
-
-  umf
-})
-
-setMethod("[", c("unmarkedFrameGDR", "logical", "missing", "missing"),
-  function(x, i) {
-  i <- which(i)
-  x[i, ]
-})
-
-setMethod("[", c("unmarkedFrameGDR", "missing", "numeric", "missing"),
-  function(x, i, j){
-
-  M <- numSites(x)
-  T <- x@numPrimary
-  if(T == 1){
-    stop("Only possible to subset by primary period", call.=FALSE)
-  }
-  yDist <- x@yDistance
-  Rdist <- ncol(yDist)
-  Jdist <- Rdist / T
-  yRem <- x@yRemoval
-  Rrem <- ncol(yRem)
-  Jrem <- Rrem / T
-  oc <- obsCovs(x)
-  ysc <- yearlySiteCovs(x)
-
-  rem_idx <- rep(1:T, each=Jrem) %in% j
-  yRem <- yRem[,rem_idx,drop=FALSE]
-  obsToY <- x@obsToY[rem_idx, rem_idx]
-
-  dist_idx <- rep(1:T, each=Jdist) %in% j
-  yDist <- yDist[,dist_idx,drop=FALSE]
-
-  if(!is.null(oc)){
-    T_idx <- rep(rep(1:T, each=Jrem),M)
-    keep <- T_idx %in% j
-    oc <- oc[keep,,drop=FALSE]
-  }
-
-  if(!is.null(ysc)){
-    site_idx <- rep(1:T, M)
-    keep <- site_idx %in% j
-    ysc <- ysc[keep,,drop=FALSE]
-  }
-
-  umf <- x
-  umf@y <- yRem
-  umf@yDistance <- yDist
-  umf@yRemoval <- yRem
-  umf@obsCovs <- oc
-  umf@yearlySiteCovs <- ysc
-  umf@obsToY <- obsToY
-  umf@numPrimary <- length(j)
-
-  umf
-})
-
-
-setMethod("getDesign", "unmarkedFrameGDR",
-  function(umf, formula, na.rm=TRUE, return.frames=FALSE){
-
-  M <- numSites(umf)
-  T <- umf@numPrimary
-  Rdist <- ncol(umf@yDistance)
-  Jdist <- Rdist/T
-  Rrem <- ncol(umf@yRemoval)
-  Jrem <- Rrem/T
-  yRem <- as.vector(t(umf@yRemoval))
-  yDist <- as.vector(t(umf@yDistance))
-
-  sc <- siteCovs(umf)
-  oc <- obsCovs(umf)
-  ysc <- yearlySiteCovs(umf)
-
-  if(is.null(sc)) sc <- data.frame(.dummy=rep(0, M))
-  if(is.null(ysc)) ysc <- data.frame(.dummy=rep(0, M*T))
-  if(is.null(oc)) oc <- data.frame(.dummy=rep(0, M*Rrem))
-
-  ysc <- cbind(ysc, sc[rep(1:M, each=T),,drop=FALSE])
-  oc <- cbind(oc, ysc[rep(1:nrow(ysc), each=Jrem),,drop=FALSE])
-
-  if(return.frames) return(list(sc=sc, ysc=ysc, oc=oc))
-
-  lam_fixed <- reformulas::nobars(formula$lambdaformula)
-  Xlam <- model.matrix(lam_fixed,
-            model.frame(lam_fixed, sc, na.action=NULL))
-
-  phi_fixed <- reformulas::nobars(formula$phiformula)
-  Xphi <- model.matrix(phi_fixed,
-            model.frame(phi_fixed, ysc, na.action=NULL))
-
-  dist_fixed <- reformulas::nobars(formula$distanceformula)
-  Xdist <- model.matrix(dist_fixed,
-            model.frame(dist_fixed, ysc, na.action=NULL))
-
-  rem_fixed <- reformulas::nobars(formula$removalformula)
-  Xrem <- model.matrix(rem_fixed,
-            model.frame(rem_fixed, oc, na.action=NULL))
-
-  Zlam <- get_Z(formula$lambdaformula, sc)
-  Zphi <- get_Z(formula$phiformula, ysc)
-  Zdist <- get_Z(formula$distanceformula, ysc)
-  Zrem <- get_Z(formula$removalformula, oc)
- 
-  # Check if there are missing yearlySiteCovs
-  ydist_mat <- apply(matrix(yDist, nrow=M*T, byrow=TRUE), 1, function(x) any(is.na(x)))
-  yrem_mat <- apply(matrix(yRem, nrow=M*T, byrow=TRUE), 1, function(x) any(is.na(x)))
-  ok_missing_phi_covs <- ydist_mat | yrem_mat
-  missing_phi_covs <- apply(Xphi, 1, function(x) any(is.na(x)))  
-  if(!all(which(missing_phi_covs) %in% which(ok_missing_phi_covs))){
-    stop("Missing yearlySiteCovs values for some observations that are not missing", call.=FALSE)
-  }
-
-  # Check if there are missing dist covs
-  missing_dist_covs <- apply(Xdist, 1, function(x) any(is.na(x)))
-  ok_missing_dist_covs <- ydist_mat
-  if(!all(which(missing_dist_covs) %in% which(ok_missing_dist_covs))){
-    stop("Missing yearlySiteCovs values for some distance observations that are not missing", call.=FALSE)
-  }
-
-  # Check if there are missing rem covs
-  missing_obs_covs <- apply(Xrem, 1, function(x) any(is.na(x)))
-  missing_obs_covs <- apply(matrix(missing_obs_covs, nrow=M*T, byrow=TRUE), 1, function(x) any(x))
-  ok_missing_obs_covs <- yrem_mat
-  if(!all(which(missing_obs_covs) %in% which(ok_missing_obs_covs))){
-    stop("Missing obsCovs values for some removal observations that are not missing", call.=FALSE)
-  }
-    
-  if(any(is.na(Xlam))){
-    stop("gdistremoval does not currently handle missing values in siteCovs", call.=FALSE)
-  }
-
-  list(yDist=yDist, yRem=yRem, Xlam=Xlam, Xphi=Xphi, Xdist=Xdist, Xrem=Xrem,
-       Zlam=Zlam, Zphi=Zphi, Zdist=Zdist, Zrem=Zrem)
-})
-
-setClass("unmarkedFitGDR", contains = "unmarkedFitGDS")
-
 gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   distanceformula=~1, data, keyfun=c("halfnorm", "exp", "hazard", "uniform"),
   output=c("abund", "density"), unitsOut=c("ha", "kmsq"), mixture=c('P', 'NB', 'ZIP'),
@@ -267,8 +65,9 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   mixture <- match.arg(mixture)
   engine <- match.arg(engine)
 
-  formlist <- mget(c("lambdaformula", "phiformula", "distanceformula", "removalformula"))
-  if(any(sapply(formlist, has_random))) engine <- "TMB"
+  formulas <- list(lambda = lambdaformula, phi = phiformula, dist = distanceformula,
+                   rem = removalformula)
+  if(any(sapply(formulas, has_random))) engine <- "TMB"
 
   M <- numSites(data)
   T <- data@numPrimary
@@ -276,7 +75,7 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   Rrem <- ncol(data@yRemoval)
   mixture_code <- switch(mixture, P={1}, NB={2}, ZIP={3})
 
-  gd <- getDesign(data, formlist)
+  gd <- getDesign(data, formulas)
 
   Jdist <- Rdist / T
   ysum <- array(t(gd$yDist), c(Jdist, T, M))
@@ -285,19 +84,19 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
   Kmin = apply(ysum, 1, max, na.rm=T)
 
   # Parameters-----------------------------------------------------------------
-  n_param <- c(ncol(gd$Xlam), ifelse(mixture=="P",0,1),
-              ifelse(T>1,ncol(gd$Xphi),0),
-              ifelse(keyfun=="uniform", 0, ncol(gd$Xdist)),
+  n_param <- c(ncol(gd$X_lambda), ifelse(mixture=="P",0,1),
+              ifelse(T>1,ncol(gd$X_phi),0),
+              ifelse(keyfun=="uniform", 0, ncol(gd$X_dist)),
               ifelse(keyfun=="hazard",1,0),
-              ncol(gd$Xrem))
+              ncol(gd$X_rem))
   nP <- sum(n_param)
 
-  pnames <- colnames(gd$Xlam)
+  pnames <- colnames(gd$X_lambda)
   if(mixture!="P") pnames <- c(pnames, "alpha")
-  if(data@numPrimary > 1) pnames <- c(pnames, colnames(gd$Xphi))
-  if(keyfun!="uniform") pnames <- c(pnames, colnames(gd$Xdist))
+  if(data@numPrimary > 1) pnames <- c(pnames, colnames(gd$X_phi))
+  if(keyfun!="uniform") pnames <- c(pnames, colnames(gd$X_dist))
   if(keyfun=="hazard") pnames <- c(pnames, "scale")
-  pnames <- c(pnames, colnames(gd$Xrem))
+  pnames <- c(pnames, colnames(gd$X_rem))
 
   lam_ind <- 1:n_param[1]
   a_ind <- n_param[1]+1
@@ -336,7 +135,7 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
 
     nll <- function(param){
       nll_gdistremoval(param, n_param, gd$yDist, gd$yRem, ysum, mixture_code, keyfun,
-                      gd$Xlam, A, gd$Xphi, gd$Xrem, gd$Xdist, db, a, t(u), w, pl,
+                      gd$X_lambda, A, gd$X_phi, gd$X_rem, gd$X_dist, db, a, t(u), w, pl,
                       K, Kmin, threads=threads)
     }
 
@@ -376,9 +175,9 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
 
     dlist <- list(lambda=siteCovs(data), phi=yearlySiteCovs(data),
                   dist=siteCovs(data), rem=obsCovs(data))
-    inps <- get_ranef_inputs(formlist, dlist,
-                             gd[c("Xlam","Xphi","Xdist","Xrem")],
-                             gd[c("Zlam","Zphi","Zdist","Zrem")])
+    inps <- get_ranef_inputs(formulas, dlist,
+                             gd[c("X_lambda","X_phi","X_dist","X_rem")],
+                             gd[c("Z_lambda","Z_phi","Z_dist","Z_rem")])
 
     keyfun_type <- switch(keyfun, uniform={0}, halfnorm={1}, exp={2},
                           hazard={3})
@@ -466,8 +265,8 @@ gdistremoval <- function(lambdaformula=~1, phiformula=~1, removalformula=~1,
       randomVarInfo=rem_rand_info)
 
   new("unmarkedFitGDR", fitType = "gdistremoval",
-    call = match.call(), formula = as.formula(paste(formlist, collapse="")),
-    formlist = formlist, data = data, estimates = estimateList, sitesRemoved = numeric(0),
+    call = match.call(), formlist = formulas, data = data, 
+    estimates = estimateList, sitesRemoved = numeric(0),
     AIC = fmAIC, opt = opt, negLogLike = opt$value, nllFun = nll,
     mixture=mixture, K=K, keyfun=keyfun, unitsOut=unitsOut, output=output, TMB=tmb_mod)
 
@@ -538,61 +337,6 @@ setMethod("getP_internal", "unmarkedFitGDR", function(object){
   out
 })
 
-setMethod("fitted_internal", "unmarkedFitGDR", function(object){
-
-  T <- object@data@numPrimary
-
-  # Adjust log lambda when there is a random intercept
-  #loglam <- log(predict(object, "lambda", level=NULL)$Predicted)
-  #loglam <- E_loglam(loglam, object, "lambda")
-  #lam <- exp(loglam)
-  lam <- predict(object, "lambda", level=NULL)$Predicted
-  if(object@output == "density"){
-    ua <- getUA(object@data)
-    A <- rowSums(ua$a)
-    switch(object@data@unitsIn, m = A <- A / 1e6, km = A <- A)
-    switch(object@unitsOut,ha = A <- A * 100, kmsq = A <- A)
-    lam <- lam * A
-  }
-
-  gp <- getP(object)
-  rem <- gp$rem
-  dist <- gp$dist
-  if(T > 1) phi <- gp$phi
-  p_rem <- apply(rem, c(1,3), sum)
-  p_dist <- apply(dist, c(1,3), sum)
-
-  for (t in 1:T){
-    rem[,,t] <- rem[,,t] * p_dist[,rep(t, ncol(rem[,,t]))]
-    dist[,,t] <- dist[,,t] * p_rem[,rep(t,ncol(dist[,,t]))]
-    if(T > 1){
-      rem[,,t] <- rem[,,t] * phi[,rep(t, ncol(rem[,,t]))]
-      dist[,,t] <- dist[,,t] * phi[,rep(t, ncol(dist[,,t]))]
-    }
-  }
-
-  if(T > 1){
-    rem_final <- rem[,,1]
-    dist_final <- dist[,,1]
-    for (t in 2:T){
-      rem_final <- cbind(rem_final, rem[,,t])
-      dist_final <- cbind(dist_final, dist[,,t])
-    }
-  } else {
-    rem_final <- drop(rem)
-    dist_final <- drop(dist)
-  }
-
-  ft_rem <- lam * rem_final
-  ft_dist <- lam * dist_final
-  list(dist=ft_dist, rem=ft_rem)
-})
-
-setMethod("residuals_internal", "unmarkedFitGDR", function(object){
-  ft <- fitted(object)
-  list(dist=object@data@yDistance - ft$dist, rem=object@data@yRemoval-ft$rem)
-})
-
 # ranef
 
 setMethod("ranef_internal", "unmarkedFitGDR", function(object, ...){
@@ -615,7 +359,6 @@ setMethod("ranef_internal", "unmarkedFitGDR", function(object, ...){
   Kmin = apply(ysum, 1, max, na.rm=T)
 
   #loglam <- log(predict(object, "lambda", level=NULL)$Predicted)
-  #loglam <- E_loglam(loglam, object, "lambda")
   #lam <- exp(loglam)
   lam <- predict(object, "lambda", level=NULL)$Predicted
   if(object@output == "density"){
@@ -680,7 +423,6 @@ setMethod("simulate_internal", "unmarkedFitGDR", function(object, nsim){
 
   # Adjust log lambda when there is a random intercept
   #loglam <- log(predict(object, "lambda", level=NULL)$Predicted)
-  #loglam <- E_loglam(loglam, object, "lambda")
   #lam <- exp(loglam)
   lam <- predict(object, "lambda", level=NULL)$Predicted
   if(object@output == "density"){
@@ -777,10 +519,10 @@ setMethod("y_to_zeros", "unmarkedFrameGDR", function(object, ...){
 setMethod("rebuild_call", "unmarkedFitGDR", function(object){           
   cl <- object@call
   cl[["data"]] <- quote(object@data)
-  cl[["lambdaformula"]] <- object@formlist$lambdaformula
-  cl[["phiformula"]] <- object@formlist$phiformula
-  cl[["removalformula"]] <- object@formlist$removalformula
-  cl[["distanceformula"]] <- object@formlist$distanceformula
+  cl[["lambdaformula"]] <- object@formlist$lambda
+  cl[["phiformula"]] <- object@formlist$phi
+  cl[["removalformula"]] <- object@formlist$rem
+  cl[["distanceformula"]] <- object@formlist$dist
   cl[["mixture"]] <- object@mixture
   cl[["K"]] <- object@K
   cl[["keyfun"]] <- object@keyfun

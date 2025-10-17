@@ -54,6 +54,7 @@ You can also check `?MHB2014` for more information.
 
 
 ``` r
+set.seed(123)
 library(AHMbook)
 data(MHB2014)
 names(MHB2014)
@@ -426,7 +427,7 @@ head(rich)
 ```
 
 ```
-## [1] 33.41 34.74 52.46 42.03 45.56 43.37
+## [1] 33.49 34.93 52.52 42.07 45.55 43.46
 ```
 
 To get the uncertainty of this estimate, we can return a complete posterior and calculate CIs:

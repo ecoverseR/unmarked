@@ -1,7 +1,7 @@
 \name{goccu}
 \alias{goccu}
 \title{
-Fit multi-scale occupancy models
+Fit the multi-scale occupancy model of Nichols et al. (2008)
 }
 \description{
 Fit multi-scale occupancy models as described in Nichols et al. (2008) to

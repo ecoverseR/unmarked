@@ -1,20 +1,6 @@
 
 
 # ----------------------- PARAMETRIC BOOTSTRAP --------------------------
-
-setGeneric("parboot",
-           def = function(object, ...) {
-             standardGeneric("parboot")
-           })
-
-
-setClass("parboot",
-         representation(call = "call",
-                        t0 = "numeric",
-                        t.star = "matrix"))
-
-setGeneric("replaceY", function(object, newY, replNA = TRUE, ...){
-           standardGeneric("replaceY")})
 setMethod("replaceY", "unmarkedFrame", function(object, newY, replNA=TRUE, ...){
     if(replNA) is.na(newY) <- is.na(object@y)
     object@y <- newY

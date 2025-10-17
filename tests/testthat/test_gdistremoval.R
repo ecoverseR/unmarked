@@ -481,6 +481,10 @@ test_that("multi-period data works with gdistremoval",{
   umf <- unmarkedFrameGDR(dat$y, dat$yRem, siteCovs=sc, obsCovs=oc, yearlySiteCovs=ysc,
                          dist.breaks=c(0,25,50,75,100), unitsIn='m', numPrimary=5)
 
+  # Check subsetting
+  umf_sub <- umf[1:2,c(1,2,2)]
+  expect_equal(umf_sub@numPrimary, 3)
+  
   fit <- gdistremoval(~sc1,phiformula=~ysc1, removalformula=~oc1,distanceformula=~1, data=umf)
 
   expect_equivalent(coef(fit),

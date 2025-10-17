@@ -199,3 +199,37 @@ test_that("simulate can generate new datasets from scratch",{
   expect_equivalent(coef(fm, 'lambda'), c(1.4914,0.6454), tol=1e-4)
 
 })
+
+test_that("Random effects are re-generated for each simulated datset", {
+
+  set.seed(123)
+
+  M <- 100
+  J <- 3
+  x <- rnorm(M)
+  group <- sample(letters[1:10], M, replace=TRUE)
+  coefs <- list(state = c(0, 0.3, exp(0.5)), det = 0)
+  y <- matrix(NA, M, J)
+
+  umf <- unmarkedFrameOccu(y, siteCovs=data.frame(x=x, group=factor(group)))
+
+  sims <- simulate(umf, model = occu, formula = ~1~x+(1|group),
+                   coefs = coefs, nsim=30)
+
+  fits <- lapply(sims, function(x) occu(~1~x+(1|group), x))
+
+  sigs <- sapply(fits, function(x) sigma(x)$sigma)
+  ints <- sapply(fits, function(x) coef(x)[1])
+  
+  # Check that true values are roughly in center of distribution
+  # this was generally not true when random effects were only simulated once
+  # and then used in every subsequent simulated dataset
+  pct <- ecdf(sigs)
+  expect_equal(pct(exp(0.5)), 0.47, tol=1e-2)
+  pct <- ecdf(ints)
+  expect_equal(pct(0), 0.5, tol=1e-2)
+})
+
+test_that("Error returned for unsupported model-name-based simulation",{
+  expect_error(simulate("occu", formula=~1~1), "no longer supported")
+})

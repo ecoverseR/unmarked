@@ -225,6 +225,8 @@ test_that("distsamp line keyfunctions work",{
     expect_equal(gp[1,], c(0.149442,0.48402,0.09319,0.05780), tol=1e-5)
 
     fm.unif <- distsamp(~1~1, umf, keyfun="uniform")
+    actual_aic <- -2 * -fm.unif@opt$value + 2 * length(fm.unif@opt$par)
+    expect_equal(fm.unif@AIC, actual_aic)
     D <- backTransform(fm.unif, type="state")
     expect_equivalent(coef(D), 107.5000, tol=1e-4)
     gp <- getP(fm.unif)
@@ -285,6 +287,8 @@ test_that("distsamp point keyfunctions work",{
     expect_equal(gp[1,], c(0.02250,0.53885,0.21242,0.11342), tol=1e-5)
 
     fm.unif <- distsamp(~1~1, umf, keyfun="uniform")
+    actual_aic <- -2 * -fm.unif@opt$value + 2 * length(fm.unif@opt$par)
+    expect_equal(fm.unif@AIC, actual_aic)
     D <- backTransform(fm.unif, type="state")
     expect_equivalent(coef(D), 236.3451, tol=1e-4)
     gp <- getP(fm.unif)

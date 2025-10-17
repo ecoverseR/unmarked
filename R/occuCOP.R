@@ -20,177 +20,22 @@
 #   lambda_ij = Detection rate of the observation j in site i
 #   L_ij = Length/Duration of the observation j in site i
 
-# CLASSES ----------------------------------------------------------------------
-
-## unmarkedFrameOccuCOP class ----
-setClass(
-  "unmarkedFrameOccuCOP",
-  representation(L = "matrix"),
-  contains = "unmarkedFrame",
-  validity = function(object) {
-    errors <- character(0)
-    M <- nrow(object@y)
-    J <- ncol(object@y)
-    y_integers = sapply(object@y, check.integer, na.ignore = T)
-    if (!all(y_integers)) {
-      errors <- c(errors,
-                  paste(
-                    "Count detection should be integers. Non-integer values:",
-                    paste(object@y[which(!y_integers)], collapse = ', ')
-                  ))
-    }
-    if (!all(all(dim(object@L) == dim(object@y)))){
-      errors <- c( errors, paste(
-        "L should be a matrix of the same dimension as y, with M =", M,
-        "rows (sites) and J =", J, "columns (sampling occasions)."
-      ))}
-    if (length(errors) == 0) TRUE
-    else errors
-  }
-)
-
-## unmarkedFitOccuCOP class ----
-setClass("unmarkedFitOccuCOP",
-         representation(removed_obs = "matrix",
-                        formlist = "list"),
-         contains = "unmarkedFit")
-
-
 # Methods ----------------------------------------------------------------------
 
 ## getDesign method ----
-setMethod(
-  "getDesign", "unmarkedFrameOccuCOP",
-  function(umf, formlist, na.rm = TRUE) {
-    
-    "
-    getDesign convert the information in the unmarkedFrame to a format
-    usable by the likelihood function:
-    - It creates model design matrices for fixed effects (X) for each parameter (here lambda, psi) 
-    - It creates model design matrices for random effects (Z) for each parameter (here lambda, psi)
-    - It handles missing data
-    "
-    
-    # Retrieve useful informations from umf
-    M <- numSites(umf)
-    J <- obsNum(umf)
-    y <- getY(umf)
-    L <- getL(umf)
-    
-    # Occupancy submodel -------------------------------------------------------
-    # Retrieve the fixed-effects part of the formula
-    psiformula <- reformulas::nobars(as.formula(formlist$psiformula))
-    psiVars <- all.vars(psiformula)
-    
-    # Retrieve the site covariates
-    sc <- siteCovs(umf)
-    if(is.null(sc)) {
-      sc <- data.frame(.dummy = rep(0, M))
-    }
-    
-    # Check for missing variables
-    psiMissingVars <- psiVars[!(psiVars %in% names(sc))]
-    if (length(psiMissingVars) > 0) {
-      stop(paste0(
-        "Variable(s) '",
-        paste(psiMissingVars, collapse = "', '"),
-        "' not found in siteCovs"
-      ), call. = FALSE)
-    }
-
-    # State model matrix for fixed effects
-    Xpsi <- model.matrix(
-      psiformula,
-      model.frame(psiformula, sc, na.action = NULL)
-    )
-    # State model matrix for random effects
-    Zpsi <- get_Z(formlist$psiformula, sc)
-    
-    # Detection submodel -------------------------------------------------------
-    
-    # Retrieve the fixed-effects part of the formula
-    lambdaformula <- reformulas::nobars(as.formula(formlist$lambdaformula))
-    lambdaVars <- all.vars(lambdaformula)
-    
-    # Retrieve the observation covariates
-    oc <- obsCovs(umf)
-    if(is.null(oc)) {
-      oc <- data.frame(.dummy = rep(0, M*J))
-    }
-    
-    # Check for missing variables
-    lambdaMissingVars <- lambdaVars[!(lambdaVars %in% names(oc))]
-    if (length(lambdaMissingVars) > 0) {
-      stop(paste(
-        "Variable(s)",
-        paste(lambdaMissingVars, collapse = ", "),
-        "not found in obsCovs"
-      ), call. = FALSE)
-    }
-    
-    # Detection model matrix for fixed effects
-    Xlambda <- model.matrix(
-      lambdaformula,
-      model.frame(lambdaformula, oc, na.action = NULL)
-    )
-    # Detection model matrix for random effects
-    Zlambda <- get_Z(formlist$lambdaformula, oc)
-    
-    # Missing data -------------------------------------------------------------
-    
-    # Missing count data
-    missing_y <- is.na(y)
-    
-    # Missing site covariates
-    # (TRUE if at least one site covariate is missing in a site)
-    missing_sc <- apply(Xpsi, 1, function(x) any(is.na(x)))
-    
-    # Missing observation covariates
-    # (TRUE if at least one observation covariate is missing in a sampling occasion in a site)
-    missing_oc <- apply(Xlambda, 1, function(x) any(is.na(x)))
-    
-    # Matrix MxJ of values to not use because there is some data missing
-    removed_obs <- 
-      # If there is count data missing in site i and obs j
-      missing_y | 
-      # If there is any site covariate missing in site i
-      replicate(n = J, missing_sc) |
-      # If there is any observation covariate missing in site i and obs j
-      matrix(missing_oc, M, J, byrow = T)
-    
-    if (any(removed_obs)) {
-      if (na.rm) {
-        nb_missing_sites <- sum(rowSums(!removed_obs) == 0)
-        nb_missing_observations <- sum(is.na(removed_obs))
-        warning("There is missing data: ",
-                sum(missing_y), " missing count data, ",
-                sum(missing_sc), " missing site covariate(s), ",
-                sum(missing_oc), " missing observation covariate(s). ",
-                "Data from only ", (M*J)-sum(removed_obs), " observations out of ", (M*J), " are used, ",
-                "from ", M-nb_missing_sites, " sites out of ", M, ".\n\t"
-        )
-      } else {
-        stop("na.rm=FALSE and there is missing data :\n\t",
-             sum(missing_y), " missing count data (y)\n\t",
-             sum(missing_sc), " missing site covariates (siteCovs)\n\t",
-             sum(missing_oc), " missing observation covariates (obsCovs)")
-      }
-    }
-    
-    # Output -------------------------------------------------------------------
-    return(list(
-      y = y,
-      Xpsi = Xpsi,
-      Zpsi = Zpsi,
-      Xlambda = Xlambda,
-      Zlambda = Zlambda,
-      removed_obs = removed_obs
-    ))
-  })
+# All this method does is translate the submodel names
+setMethod("getDesign", "unmarkedFrameOccuCOP", function(umf, formulas, na.rm = TRUE){
+  names(formulas)[names(formulas) == "psi"] <- "state"
+  names(formulas)[names(formulas) == "lambda"] <- "det"
+  out <- methods::callNextMethod(umf, formulas = formulas, na.rm = na.rm)
+  nms <- gsub("state", "psi", names(out))
+  nms <- gsub("det", "lambda", nms)
+  names(out) <- nms
+  out
+})
 
 
 ## getL method ----
-setGeneric("getL", function(object) standardGeneric("getL"))
 setMethod("getL", "unmarkedFrameOccuCOP", function(object) {
   return(object@L)
 })
@@ -248,122 +93,6 @@ setMethod("summary", "unmarkedFrameOccuCOP", function(object,...) {
 })
 
 
-## umf[i, j] ----
-setMethod("[", c("unmarkedFrameOccuCOP", "numeric", "numeric", "missing"),
-          function(x, i, j) {
-            # Gey dimensions of x
-            M <- numSites(x)
-            J <- obsNum(x)
-            
-            if (length(i) == 0 & length(j) == 0) {
-              return(x)
-            }
-            
-            # Check i
-            if (any(i < 0) &&
-                any(i > 0)) {
-              stop("i must be all positive or all negative indices.")
-            }
-            if (all(i < 0)) {
-              i <- (1:M)[i]
-            }
-            
-            # Check j
-            if (any(j < 0) &&
-                any(j > 0)) {
-              stop("j must be all positive or all negative indices.")
-            }
-            if (all(j < 0)) {
-              j <- (1:J)[j]
-            }
-            
-            # y observation count data subset
-            y <- getY(x)[i, j, drop = FALSE]
-            if (min(length(i), length(j)) == 1) {
-              y <- t(y)
-            }
-            
-            # L subset
-            L <- x@L[i, j, drop = FALSE]
-            if (min(length(i), length(j)) == 1) {
-              L <- t(L)
-            }
-            
-            # siteCovs subset
-            siteCovs <- siteCovs(x)
-            if (!is.null(siteCovs)) {
-              siteCovs <- siteCovs(x)[i, , drop = FALSE]
-            }
-            
-            # obsCovs subset
-            obsCovs <- obsCovs(x)
-            if (!is.null(obsCovs)) {
-              MJ_site <- rep(1:M, each = J)
-              MJ_obs <- rep(1:J, times = M)
-              obsCovs <- obsCovs[((MJ_obs %in% j) & (MJ_site %in% i)), , drop = FALSE]
-              rownames(obsCovs) <- NULL
-            }
-            
-            # Recreate umf
-            new(
-              Class = "unmarkedFrameOccuCOP",
-              y = y,
-              L = L,
-              siteCovs = siteCovs,
-              obsCovs = obsCovs,
-              obsToY = diag(length(j))
-            )
-          })
-
-
-## umf[i, ] ----
-setMethod("[", c("unmarkedFrameOccuCOP", "numeric", "missing", "missing"),
-          function(x, i) {
-            x[i, 1:obsNum(x)]
-          })
-
-## umf[, j] ----
-setMethod("[", c("unmarkedFrameOccuCOP", "missing", "numeric", "missing"),
-          function(x, j) {
-            x[1:numSites(x), j]
-          })
-
-
-## fl_getY ----
-setMethod("fl_getY", "unmarkedFitOccuCOP", function(fit, ...){
-  getDesign(getData(fit), fit@formlist)$y
-})
-
-
-## predict_inputs_from_umf ----
-setMethod("predict_inputs_from_umf", "unmarkedFitOccuCOP",
-          function(object, type, newdata, na.rm, re.form = NULL) {
-            designMats = getDesign(umf = newdata,
-                                   formlist = object@formlist,
-                                   na.rm = na.rm)
-            if (type == "psi") list_els <- c("Xpsi", "Zpsi")
-            if (type == "lambda") list_els <- c("Xlambda", "Zlambda")
-            X <- designMats[[list_els[1]]]
-            if (is.null(re.form)) X <- cbind(X, designMats[[list_els[2]]])
-            return(list(X = X, offset = NULL))
-          })
-
-
-## get_formula ----
-setMethod("get_formula", "unmarkedFitOccuCOP", function(object, type, ...) {
-  fl <- object@formlist
-  switch(type, psi = fl$psiformula, lambda = fl$lambdaformula)
-})
-
-
-## get_orig_data ----
-setMethod("get_orig_data", "unmarkedFitOccuCOP", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=FALSE)
-  datatype <- switch(type, psi = 'site_covs', lambda = 'obs_covs')
-  clean_covs[[datatype]]
-})
-
-
 ## getP ----
 setMethod("getP_internal", "unmarkedFitOccuCOP", function(object) {
   data <- object@data
@@ -372,22 +101,6 @@ setMethod("getP_internal", "unmarkedFitOccuCOP", function(object) {
   lam <- predict(object, type="lambda", level=NULL, na.rm=FALSE)$Predicted
   lam <- matrix(lam, M, J, byrow=TRUE)
   lam
-})
-
-
-## fitted ----
-setMethod("fitted_internal", "unmarkedFitOccuCOP", function(object) {
-  data <- object@data
-  M = nrow(getY(data))
-  J = ncol(getY(data))
-  des <- getDesign(data, object@formlist, na.rm = FALSE)
-  estim_psi = as.numeric(do.call(object["psi"]@invlink,
-                                 list(as.matrix(des$Xpsi %*% coef(object, 'psi')))))
-  estim_lambda = do.call(object["lambda"]@invlink, 
-                         list(matrix(
-                           as.numeric(des$Xlambda %*% coef(object, 'lambda')),
-                           nrow = M, ncol = J, byrow = T)))
-  return(estim_psi * estim_lambda)
 })
 
 
@@ -461,12 +174,11 @@ setMethod("nonparboot_internal", "unmarkedFitOccuCOP",
 setMethod("ranef_internal", "unmarkedFitOccuCOP", function(object, ...) {
   # Sites removed (srm) and sites kept (sk)
   srm <- object@sitesRemoved
+  sk <- 1:numSites(getData(object))
   if (length(srm) > 0) {
-    sk = 1:numSites(getData(object))[-srm]
-  } else{
-    sk = 1:numSites(getData(object))
+    sk = sk[-srm]
   }
-  
+
   # unmarkedFrame informations
   M <- length(sk)
   J <- obsNum(getData(object))
@@ -506,8 +218,8 @@ setMethod("ranef_internal", "unmarkedFitOccuCOP", function(object, ...) {
 # Used by update() method
 setMethod("rebuild_call", "unmarkedFitOccuCOP", function(object){ 
   cl <- methods::callNextMethod(object)
-  cl[["psiformula"]] <- object@formlist$psiformula
-  cl[["lambdaformula"]] <- object@formlist$lambdaformula
+  cl[["psiformula"]] <- object@formlist$psi
+  cl[["lambdaformula"]] <- object@formlist$lambda
   cl
 })
 
@@ -677,17 +389,18 @@ occuCOP <- function(data,
   # Format input data ----------------------------------------------------------
   
   # Retrieve formlist
-  formlist <- mget(c("psiformula", "lambdaformula"))
+  formlist <- list(lambda = lambdaformula, psi = psiformula)
   
   # Get the design matrix (calling the getDesign method for unmarkedFrame)
   # For more informations, see: getMethod("getDesign", "unmarkedFrameOccuCOP")
-  designMats <- getDesign(umf = data, formlist = formlist, na.rm = na.rm)
+  designMats <- getDesign(umf = data, formulas = formlist, na.rm = TRUE)
   
   # y is the count detection data (matrix of size M sites x J observations)
-  y <- getY(data)
+  y <- designMats$y
   
   # L is the length of observations (matrix of size M sites x J observations)
   L <- getL(data)
+  L <- L[!1:nrow(L) %in% designMats$removed.sites,,drop=FALSE]
   if (!L1) {
     if (!any(is.na(L))) {
       if (all(L == 1)) {
@@ -703,20 +416,20 @@ occuCOP <- function(data,
   }
   
   # Xpsi is the fixed effects design matrix for occupancy
-  Xpsi <- designMats$Xpsi
+  Xpsi <- designMats$X_psi
   
   # Xlambda is the fixed effects design matrix for detection rate
-  Xlambda <- designMats$Xlambda
+  Xlambda <- designMats$X_lambda
   
   # Zpsi is the random effects design matrix for occupancy
-  Zpsi <- designMats$Zpsi
+  Zpsi <- designMats$Z_psi
   
   # Zlambda is the random effects design matrix for detection rate
-  Zlambda <- designMats$Zlambda
+  Zlambda <- designMats$Z_lambda
   
   # removed_obs is a M x J matrix of the observations removed from the analysis
-  removed_obs <- designMats$removed_obs
-  sitesRemoved <- unname(which(apply(removed_obs, 1, function(x) all(x))))
+  removed_obs <- is.na(y)
+  sitesRemoved <- designMats$removed.sites
   
   # Number of sites
   M <- nrow(y)
@@ -910,9 +623,6 @@ occuCOP <- function(data,
     "unmarkedFitOccuCOP",
     fitType = "occuCOP",
     call = match.call(),
-    formula = as.formula(paste(
-      formlist["lambdaformula"], formlist["psiformula"], collapse = ""
-    )),
     formlist = formlist,
     data = data,
     estimates = estimateList,

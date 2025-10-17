@@ -237,6 +237,7 @@ test_that("distsampOpen works with NAs", {
 
   expect_warning(fm <- distsampOpen(~x1, ~x2, ~1, ~1, data=umf, K=7, keyfun="halfnorm"))
   expect_equivalent(coef(fm), c(1.3058,-0.2966,-7.9133,-7.9281,8.6582,3.3108), tol=1e-4)
+  expect_equal(fm@sitesRemoved, 3)
 
   ft <- fitted(fm)
   expect_true(all(is.na(ft[3,])))
@@ -306,6 +307,8 @@ test_that("distsampOpen uniform keyfun works", {
   fm <- distsampOpen(~1, ~1, ~1, data = umf, K=15,keyfun="unif")
   expect_equivalent(coef(fm), c(1.4586,0.7262,-0.05239),
                      tol=1e-4)
+  actual_aic <- -2 * -fm@opt$value + 2 * length(fm@opt$par)
+  expect_equal(actual_aic, fm@AIC)
 
   set.seed(123)
   y <- simData(lambda=4, gamma=2, omega=0.5, sigma=25, M=50, T=5,type="point",

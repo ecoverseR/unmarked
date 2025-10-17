@@ -11,23 +11,10 @@ engine <- match.arg(engine, c("C", "R"))
 
 mixture <- match.arg(mixture)
 
-formlist <- list(lambdaformula = lambdaformula, phiformula = phiformula,
-    pformula = pformula)
-check_no_support(formlist)
-form <- as.formula(paste(unlist(formlist), collapse=" "))
-D <- getDesign(data, formula = form)
-
-Xlam <- D$Xlam
-Xphi <- D$Xphi
-Xdet <- D$Xdet
+formulas <- list(lambda = lambdaformula, phi = phiformula, det = pformula)
+check_no_support(formulas)
+D <- getDesign(data, formulas)
 y <- D$y  # MxJT
-
-Xlam.offset <- D$Xlam.offset
-Xphi.offset <- D$Xphi.offset
-Xdet.offset <- D$Xdet.offset
-if(is.null(Xlam.offset)) Xlam.offset <- rep(0, nrow(Xlam))
-if(is.null(Xphi.offset)) Xphi.offset <- rep(0, nrow(Xphi))
-if(is.null(Xdet.offset)) Xdet.offset <- rep(0, nrow(Xdet))
 
 K <- check_K_multinomial(K, K_adjust = 100, y, data@numPrimary)
 k <- 0:K
@@ -48,17 +35,17 @@ yt <- apply(y, 1:2, function(x) {
 
 piFun <- data@piFun
 
-lamPars <- colnames(Xlam)
-detPars <- colnames(Xdet)
-nLP <- ncol(Xlam)
+lamPars <- colnames(D$X_lambda)
+detPars <- colnames(D$X_det)
+nLP <- ncol(D$X_lambda)
 if(T==1) {
     nPP <- 0
     phiPars <- character(0)
 } else if(T>1) {
-    nPP <- ncol(Xphi)
-    phiPars <- colnames(Xphi)
+    nPP <- ncol(D$X_phi)
+    phiPars <- colnames(D$X_phi)
     }
-nDP <- ncol(Xdet)
+nDP <- ncol(D$X_det)
 nP <- nLP + nPP + nDP + (mixture%in%c('NB','ZIP'))
 if(!missing(starts) && length(starts) != nP)
     stop(paste("The number of starting values should be", nP))
@@ -81,12 +68,12 @@ for(i in 1:M) {
     }
 
 nll_R <- function(pars) {
-    lambda <- exp(Xlam %*% pars[1:nLP] + Xlam.offset)
+    lambda <- exp(D$X_lambda %*% pars[1:nLP] + D$offset_lambda)
     if(T==1)
         phi <- 1
     else if(T>1)
-        phi <- drop(plogis(Xphi %*% pars[(nLP+1):(nLP+nPP)] + Xphi.offset))
-    p <- plogis(Xdet %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)] + Xdet.offset)
+        phi <- drop(plogis(D$X_phi %*% pars[(nLP+1):(nLP+nPP)] + D$offset_phi))
+    p <- plogis(D$X_det %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)] + D$offset_det)
 
     phi.mat <- matrix(phi, M, T, byrow=TRUE)
     phi <- as.numeric(phi.mat)
@@ -132,16 +119,19 @@ if(engine=="R"){
     as.vector(t(out))
   }
   y_long <- long_format(y)
-  kmytC <- kmyt
-  kmytC[which(is.na(kmyt))] <- 0
 
+  # Vectorize these arrays as using arma::subcube sometimes crashes
+  kmytC <- as.vector(aperm(kmyt, c(3,2,1)))
+  kmytC[which(is.na(kmytC))] <- 0
+  lfac.kmytC <- as.vector(aperm(lfac.kmyt, c(3,2,1)))
+ 
   mixture_code <- switch(mixture, P={1}, NB={2}, ZIP={3})
   n_param <- c(nLP, nPP, nDP, mixture%in%c("NB","ZIP"))
   Kmin <- apply(yt, 1, max, na.rm=TRUE)
 
   nll <- function(params) {
-    nll_gmultmix(params, n_param, y_long, mixture_code, piFun, Xlam, Xlam.offset,
-                 Xphi, Xphi.offset, Xdet, Xdet.offset, k, lfac.k, lfac.kmyt,
+    nll_gmultmix(params, n_param, y_long, mixture_code, piFun, D$X_lambda, D$offset_lambda,
+                 D$X_phi, D$offset_phi, D$X_det, D$offset_det, k, lfac.k, lfac.kmytC,
                  kmytC, Kmin, threads)
   }
 
@@ -200,7 +190,7 @@ if(identical(mixture,"ZIP")) {
 }
 
 umfit <- new("unmarkedFitGMM", fitType = "gmn",
-    call = match.call(), formula = form, formlist = formlist,
+    call = match.call(), formlist = formulas,
     data = data, estimates = estimateList, sitesRemoved = D$removed.sites,
     AIC = fmAIC, opt = fm, negLogLike = fm$value, nllFun = nll,
     mixture=mixture, K=K)

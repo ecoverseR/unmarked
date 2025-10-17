@@ -8,7 +8,7 @@
 \alias{show,unmarkedCrossVal-method}
 \alias{show,unmarkedCrossValList-method}
 
-\title{Cross-validation methods for fitted unmarked models and fit lists}
+\title{Cross-validation methods for fitted \code{unmarked} models and fit lists}
 
 \description{Test predictive accuracy of fitted models using several 
   cross-validation approaches. The dataset is divided by site only into folds or

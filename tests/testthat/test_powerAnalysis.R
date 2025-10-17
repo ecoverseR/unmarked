@@ -81,3 +81,12 @@ test_that("powerAnalysis can be run in parallel",{
     expect_equal(length(pa@estimates), 2)
   })
 })
+
+test_that("Error returned for unsupported unmarkedFit-based power analysis",{
+  temp2 <- temp
+  temp2@y[] <- 0
+  fit <- suppressWarnings(occu(~1~1, temp2))
+  expect_error(powerAnalysis(fit), "no longer supported")
+
+  expect_error(shinyPower(fit), "no longer supported")
+})

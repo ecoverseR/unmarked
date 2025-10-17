@@ -27,7 +27,7 @@ test_that("fitLists can be constructed",{
   fm2 <- occu(~ 1 ~ x, data = umf)
   expect_error(expect_warning(fitList(fm1, fm2)))   # Different umf used
 
-  expect_warning(fm3 <- occu(~ z ~ 1, data = umf))
+  fm3 <- occu(~ z ~ 1, data = umf)
   expect_error(expect_warning(fitList(fm1, fm3)))   # Missing value problem
 })
 

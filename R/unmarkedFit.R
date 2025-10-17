@@ -1,164 +1,3 @@
-setClass("unmarkedFit",
-   representation(fitType = "character",
-        call = "call",
-        formula = "formula",
-        data = "unmarkedFrame",
-        sitesRemoved = "numeric",  # vector of indices of removed sites
-        estimates = "unmarkedEstimateList",
-        AIC = "numeric",
-        opt = "list",
-        negLogLike = "numeric",
-        nllFun = "function",
-        bootstrapSamples = "optionalList",
-        covMatBS = "optionalMatrix", # list of bootstrap sample fits
-        TMB = "optionalList")) #TMB output object
-
-# ---------------------------- CHILD CLASSES ----------------------------
-
-
-setClass("unmarkedFitDS",
-    representation(
-        keyfun = "character",
-        unitsOut = "character",
-        output = "character"),
-        contains = "unmarkedFit")
-
-
-
-setClass("unmarkedFitPCount",
-    representation(
-        K = "numeric",
-        mixture = "character"),
-    contains = "unmarkedFit")
-
-# This class is not used directly, just used as a base for for PCO, MMO, DSO
-setClass("unmarkedFitDailMadsen",
-        representation(
-            K = "numeric",
-            mixture = "character",
-            formlist = "list",
-            dynamics = "character",
-            immigration = "logical",
-            fix = "character"),
-         contains = "unmarkedFit")
-
-setClass("unmarkedFitPCO", contains = "unmarkedFitDailMadsen")
-
-setClass("unmarkedFitMMO", contains = "unmarkedFitDailMadsen")
-
-setClass("unmarkedFitDSO",
-        representation(
-            keyfun = "character",
-            unitsOut = "character",
-            output = "character"),
-        contains = "unmarkedFitDailMadsen")
-
-setClass("unmarkedFitOccu",
-    representation(knownOcc = "logical"),
-    contains = "unmarkedFit")
-
-setClass("unmarkedFitOccuPEN",
-    representation(
-	knownOcc = "logical",
-	pen.type = "character",
-	lambda = "numeric"),
-    contains = "unmarkedFit")
-
-setClass("unmarkedFitOccuPEN_CV",
-    representation(
-	knownOcc = "logical",
-	pen.type = "character",
-	lambdaVec = "numeric",
-	k = "numeric",
-	foldAssignments = "numeric",
-	lambdaScores = "numeric",
-	chosenLambda = "numeric"),
-    contains = "unmarkedFit")
-
-setClass("unmarkedFitOccuFP",
-         representation(knownOcc = "logical",
-            detformula = "formula",
-            FPformula = "formula",
-            Bformula = "formula",
-            stateformula = "formula",
-            type = "numeric"),
-         contains = "unmarkedFit")
-
-setClass("unmarkedFitOccuMulti",
-         representation(
-            detformulas = "character",
-            stateformulas = "character"),
-         contains = "unmarkedFit")
-
-setClass("unmarkedFitOccuMS",
-         representation(
-            detformulas = "character",
-            psiformulas = "character",
-            phiformulas = "character",
-            parameterization = "character"),
-         contains = "unmarkedFit")
-
-setClass("unmarkedFitOccuTTD",
-    representation(
-        psiformula = "formula",
-        gamformula = "formula",
-        epsformula = "formula",
-        detformula = "formula"),
-    contains = "unmarkedFit")
-
-setClass("unmarkedFitNmixTTD",
-         representation(
-           stateformula = "formula",
-           detformula = "formula",
-           K = "numeric"),
-         contains = "unmarkedFit")
-
-setClass("unmarkedFitMPois",
-    contains = "unmarkedFit")
-
-
-setClass("unmarkedFitOccuRN",
-    representation(
-      K = "numeric"),
-    contains = "unmarkedFit")
-
-setClass("unmarkedFitColExt",
-    representation(
-        phi = "matrix",
-        psiformula = "formula",
-        gamformula = "formula",
-        epsformula = "formula",
-        detformula = "formula",
-        projected = "array",
-        projected.mean = "matrix",
-        smoothed = "array",
-        smoothed.mean = "matrix",
-        projected.mean.bsse = "optionalMatrix",
-        smoothed.mean.bsse = "optionalMatrix"),
-    contains = "unmarkedFit")
-
-
-setClass("unmarkedFitGMM",
-    representation(
-        formlist = "list",
-        mixture = "character",
-        K = "numeric"),
-    contains = "unmarkedFit")
-
-
-setClass("unmarkedFitGDS",
-    representation(
-        keyfun = "character",
-        unitsOut = "character",
-        output = "character"),
-    contains = "unmarkedFitGMM")
-
-
-setClass("unmarkedFitGPC",
-    contains = "unmarkedFitGMM")
-
-
-
 # -------------------------- Show and Summary ----------------------------
 
 
@@ -173,8 +12,6 @@ setMethod("summary", "unmarkedFit", function(object)
   summary_internal(object)
 })
 
-
-setGeneric("summary_internal", function(object) standardGeneric("summary_internal"))
 
 setMethod("summary_internal", "unmarkedFit", function(object)
 {
@@ -462,7 +299,6 @@ setMethod("hessian", "unmarkedFit",
 })
 
 
-setGeneric("sampleSize", function(object) standardGeneric("sampleSize"))
 setMethod("sampleSize", "unmarkedFit", function(object) {
     data <- getData(object)
     M <- numSites(data)
@@ -471,30 +307,23 @@ setMethod("sampleSize", "unmarkedFit", function(object) {
 })
 
 
-setGeneric("getData", function(object) standardGeneric("getData"))
 setMethod("getData", "unmarkedFit",function(object) {
     object@data
 })
 
 
-setGeneric("nllFun", function(object) standardGeneric("nllFun"))
 setMethod("nllFun", "unmarkedFit", function(object) object@nllFun)
 
-setGeneric("mle", function(object) standardGeneric("mle"))
+
 setMethod("mle", "unmarkedFit", function(object) object@opt$par)
 
-setClass("profile", representation(prof = "matrix"))
-
-setGeneric("smoothed",
-    function(object, mean=TRUE) standardGeneric("smoothed"))
 setMethod("smoothed","unmarkedFitColExt",
     function(object, mean) {
         if(mean) object@smoothed.mean
         else object@smoothed
     })
 
-setGeneric("projected",
-    function(object, mean=TRUE) standardGeneric("projected"))
+
 setMethod("projected","unmarkedFitColExt", function(object, mean) {
     if(mean) object@projected.mean
     else object@projected
@@ -509,8 +338,6 @@ setMethod("plot", c(x = "unmarkedFit", y = "missing"), function(x, y, ...)
 {
   residual_plot(x, ...)
 })
-
-setGeneric("residual_plot", function(x, ...) standardGeneric("residual_plot"))
 
 setMethod("residual_plot", "unmarkedFit", function(x, ...)
 {
@@ -635,29 +462,15 @@ setMethod("hist", "unmarkedFitDS", function(x, lwd=1, lty=1, ...) {
 # ----------------------- CHILD CLASS METHODS ---------------------------
 
 # Extract detection probs
-setGeneric("getFP", function(object, ...) standardGeneric("getFP"))
-setGeneric("getB", function(object, ...) standardGeneric("getB"))
-
-
 setMethod("getFP", "unmarkedFitOccuFP", function(object, na.rm = TRUE)
 {
-  formula <- object@formula
-  detformula <- object@detformula
-  stateformula <- object@stateformula
-  FPformula <- object@FPformula
-  Bformula <- object@Bformula
-  umf <- object@data
-  designMats <- getDesign(umf, detformula,FPformula,Bformula,stateformula, na.rm = na.rm)
+  designMats <- getDesign(getData(object), object@formlist, na.rm = na.rm)
   type = object@type
   y <- designMats$y
-  U <- designMats$U
-  U.offset <- designMats$U.offset
-  if (is.null(U.offset))
-    U.offset <- rep(0, nrow(U))
   M <- nrow(y)
   J <- ncol(y)
   fpars <- coef(object, type = "fp")
-  f <- plogis(U %*% fpars + U.offset)
+  f <- plogis(designMats$X_fp %*% fpars + designMats$offset_fp)
   f <- matrix(f, M, J, byrow = TRUE)
   if (type[1]!=0){
     f[,1:type[1]] = 0
@@ -667,24 +480,14 @@ setMethod("getFP", "unmarkedFitOccuFP", function(object, na.rm = TRUE)
 
 setMethod("getB", "unmarkedFitOccuFP", function(object, na.rm = TRUE)
 {
-  formula <- object@formula
-  detformula <- object@detformula
-  stateformula <- object@stateformula
-  FPformula <- object@FPformula
-  Bformula <- object@Bformula
-  umf <- object@data
-  designMats <- getDesign(umf, detformula,FPformula,Bformula,stateformula, na.rm = na.rm)
+  designMats <- getDesign(getData(object), object@formlist, na.rm = na.rm)
   y <- designMats$y
-  W <- designMats$W
-  W.offset <- designMats$W.offset
-  if (is.null(W.offset))
-    W.offset <- rep(0, nrow(W))
   M <- nrow(y)
   J <- ncol(y)
   type = object@type
   if (type[3]!=0){
     bpars <- coef(object, type = "b")
-  b <- plogis(W %*% bpars + W.offset)
+  b <- plogis(designMats$X_b %*% bpars + designMats$offset_b)
   b <- matrix(b, M, J, byrow = TRUE)
   }
   if (type[3]==0){
@@ -695,8 +498,6 @@ setMethod("getB", "unmarkedFitOccuFP", function(object, na.rm = TRUE)
 
 #Y extractors for unmarkedFit objects
 setMethod("getY", "unmarkedFit", function(object) getY_internal(object))
-
-setGeneric("getY_internal", function(object) standardGeneric("getY_internal"))
 
 setMethod("getY_internal", "unmarkedFit", function(object) object@data@y)
 setMethod("getY_internal", "unmarkedFitOccu", function(object) {
@@ -710,4 +511,26 @@ setMethod("getY_internal", "unmarkedFitColExt", function(object) {
 })
 setMethod("getY_internal", "unmarkedFitOccuMulti", function(object) {
             object@data@ylist
+})
+
+# Extract formula(s) for a particular submodel
+setMethod("get_formula", "unmarkedFit", function(object, type, ...){
+  if(methods::.hasSlot(object, "formlist")){
+    formlist <- object@formlist
+  } else {
+    # For partial backwards compatibility
+    if(methods::.hasSlot(object, "formula") & type %in% c("state", "det")){
+      formlist <- split_formula(object@formula)
+      names(formlist) <- c("det", "state")
+    } else {
+      stop("Fitted model is incompatible with this version of unmarked. Try re-fitting the model.")  
+    }
+  }
+
+  formlist[[type]]
+})
+
+# Extract the covariates used for a particular submodel
+setMethod("get_covariates", "unmarkedFit", function(object, type, ...){
+  get_covariates(getData(object), type, ...)
 })

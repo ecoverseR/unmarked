@@ -4,14 +4,13 @@ setMethod("simulate", "unmarkedFrame",
   object <- y_to_zeros(object)
   fit <- get_fit(object, model, ...)
   coefs <- check_coefs(coefs, fit, quiet = quiet)
-  coefs <- generate_random_effects(coefs, fit)
-  fit <- replace_estimates(fit, coefs)
-  sims <- simulate(fit, nsim)
-  lapply(sims, function(x) replaceY(object, x))
-})
-
-setGeneric("y_to_zeros", function(object, ...){
-  standardGeneric("y_to_zeros")
+  lapply(1:nsim, function(i){
+    coefs <- generate_random_effects(coefs, fit)
+    fit <- replace_estimates(fit, coefs)
+    # Cannot use nsim > 1 below as the sims would use the same set of random effects
+    sim <- simulate(fit, nsim = 1)[[1]] 
+    replaceY(object, sim)
+  })
 })
 
 # Other fit-specific methods at the bottom of the file
@@ -26,10 +25,7 @@ get_fit <- function(object, model, ...){
       control=list(maxit=0), se=FALSE)
 }
 
-setGeneric("get_fitting_function", function(object, model, ...){
-  standardGeneric("get_fitting_function")
-})
-
+# Get fitting function associated with an unmarkedFrame type
 # Other fit-specific methods at the bottom of the file
 setMethod("get_fitting_function", "unmarkedFrameOccu",
           function(object, model, ...){
@@ -251,9 +247,6 @@ setMethod("simulate", "unmarkedFit", function(object, nsim = 1, seed = NULL, ...
 })
 
 # Internal methods
-setGeneric("simulate_internal", function(object, nsim) standardGeneric("simulate_internal"))
-
-
 setMethod("simulate_internal", "unmarkedFitColExt",
   function(object, nsim){
     data <- object@data
@@ -390,7 +383,6 @@ setMethod("simulate_internal", "unmarkedFitGDS",
 
 setMethod("simulate_internal", "unmarkedFitGMM",
   function(object, nsim){
-    formula <- object@formula
     umf <- object@data
     mixture <- object@mixture
     y <- umf@y
@@ -451,7 +443,6 @@ setMethod("simulate_internal", "unmarkedFitGMM",
 
 setMethod("simulate_internal", "unmarkedFitGPC",
     function(object, nsim){
-    formula <- object@formula
     umf <- object@data
     mixture <- object@mixture
     y <- umf@y
@@ -743,7 +734,7 @@ setMethod("simulate_internal", "unmarkedFitOccuMulti",
     maxOrder <- object@call$maxOrder
     # TODO: put maxOrder in output object?
     if(is.null(maxOrder)) maxOrder <- length(object@data@ylist)
-    dm <- getDesign(object@data, object@detformulas, object@stateformulas, maxOrder)
+    dm <- getDesign(object@data, object@formlist, maxOrder)
     # TODO: standardize this
     psi <- predict(object, "state", level=NULL)$Predicted
     p <- getP(object)
@@ -861,7 +852,9 @@ setMethod("simulate_internal", "unmarkedFitOccuTTD",
 
 setMethod("simulate_internal", "unmarkedFitPCount",
   function(object, nsim){
-  lam <- predict(object, type = "state", level = NULL, na.rm=FALSE)$Predicted
+  # Can't use predict because it will be incorrect with ZIP
+  dm <- getDesign(object@data, object@formlist, na.rm = FALSE)
+  lam <- exp(dm$X_state %*% coef(object, "state") + dm$offset_state)
   p <- getP(object, na.rm=FALSE)
   M <- nrow(p)
   J <- ncol(p)
@@ -890,13 +883,15 @@ simOpenN <- function(object){
     #To partially handle old saved model objects
     fix <- tryCatch(object@fix, error=function(e) "none")
     immigration <- tryCatch(object@immigration, error=function(e) FALSE)
-    delta <- getDesign(umf, object@formula, na.rm = FALSE)$delta  
+    dm <- getDesign(umf, object@formlist, na.rm = FALSE)
+    delta <- dm$delta
     y <- umf@y
     M <- nrow(y)
     T <- umf@numPrimary
     J <- ncol(y) / T
 
-    lambda <- predict(object, type = "lambda", level = NULL, na.rm = FALSE)$Predicted
+    # Can't use predict because it will be incorrect with ZIP
+    lambda <- exp(dm$X_lambda %*% coef(object, "lambda") + dm$offset_lambda)
 
     if(fix == "gamma"){
         gamma <- matrix(0, M, T-1)

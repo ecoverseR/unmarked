@@ -24,12 +24,11 @@ multmixOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
 
   fix <- match.arg(fix)
 
-  formlist <- mget(c("lambdaformula", "gammaformula", "omegaformula",
-                   "pformula", "iotaformula"))
-  check_no_support(formlist)
-  formula <- as.formula(paste(unlist(formlist), collapse=" "))
+  formulas <- list(lambda = lambdaformula, gamma = gammaformula,
+                   omega = omegaformula, det = pformula, iota = iotaformula)
+  check_no_support(formulas)
 
-  D <- getDesign(data, formula)
+  D <- getDesign(data, formulas)
   y <- D$y
 
   M <- nrow(y)
@@ -52,17 +51,6 @@ multmixOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
   last  <- apply(!ytna, 1, function(x) max(which(x)))
   first1 <- which(first==1)[1]
 
-  Xlam.offset <- D$Xlam.offset
-  Xgam.offset <- D$Xgam.offset
-  Xom.offset <- D$Xom.offset
-  Xp.offset <- D$Xp.offset
-  Xiota.offset <- D$Xiota.offset
-  if(is.null(Xlam.offset)) Xlam.offset <- rep(0, M)
-  if(is.null(Xgam.offset)) Xgam.offset <- rep(0, M*(T-1))
-  if(is.null(Xom.offset)) Xom.offset <- rep(0, M*(T-1))
-  if(is.null(Xp.offset)) Xp.offset <- rep(0, M*T*R)
-  if(is.null(Xiota.offset)) Xiota.offset <- rep(0, M*(T-1))
-
   #K stuff
   K <- check_K_multinomial(K, K_adjust = 20, D$y, T)
   k <- 0:K
@@ -82,18 +70,18 @@ multmixOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
     }
   }
 
-  lamParms <- colnames(D$Xlam)
-  gamParms <- colnames(D$Xgam)
-  omParms <- colnames(D$Xom)
-  detParms <- colnames(D$Xp)
-  nAP <- ncol(D$Xlam)
-  nGP <- ncol(D$Xgam)
-  nOP <- ncol(D$Xom)
-  nDP <-  ncol(D$Xp)
+  lamParms <- colnames(D$X_lambda)
+  gamParms <- colnames(D$X_gamma)
+  omParms <- colnames(D$X_omega)
+  detParms <- colnames(D$X_det)
+  nAP <- ncol(D$X_lambda)
+  nGP <- ncol(D$X_gamma)
+  nOP <- ncol(D$X_omega)
+  nDP <-  ncol(D$X_det)
 
-  nIP <- ifelse(immigration, ncol(D$Xiota), 0)
+  nIP <- ifelse(immigration, ncol(D$X_iota), 0)
   iotaParms <- character(0)
-  if(immigration) iotaParms <- colnames(D$Xiota)
+  if(immigration) iotaParms <- colnames(D$X_iota)
 
   if(identical(fix, "gamma")) {
     if(!identical(dynamics, "constant"))
@@ -168,9 +156,9 @@ multmixOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
   nll <- function(parms) {
     nll_multmixOpen(
           yperm, yt,
-          D$Xlam, D$Xgam, D$Xom, D$Xp, D$Xiota,
+          D$X_lambda, D$X_gamma, D$X_omega, D$X_det, D$X_iota,
           parms, beta_ind - 1,
-          Xlam.offset, Xgam.offset, Xom.offset, Xp.offset, Xiota.offset,
+          D$offset_lambda, D$offset_gamma, D$offset_omega, D$offset_det, D$offset_iota,
           ytna, yna,
           lk, mixture, first - 1, last - 1, first1 - 1, M, T, J, R,
           D$delta, dynamics, fix, D$go.dims, immigration,
@@ -259,7 +247,7 @@ multmixOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
   }
 
   umfit <- new("unmarkedFitMMO", fitType = "multmixOpen",
-      call = match.call(), formula = formula, formlist = formlist, data = data,
+      call = match.call(), formlist = formulas, data = data,
       sitesRemoved=D$removed.sites, estimates = estimateList, AIC = fmAIC,
       opt = fm, negLogLike = fm$value, nllFun = nll, K = K, mixture = mixture,
       dynamics = dynamics, fix = fix, immigration=immigration)

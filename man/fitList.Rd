@@ -1,6 +1,6 @@
 \name{fitList}
 \alias{fitList}
-\title{constructor of unmarkedFitList objects}
+\title{Create a list of fitted \code{unmarked} models}
 \usage{fitList(..., fits, autoNames=c("object", "formula"))}
 \description{Organize models for model selection or model-averaged prediction.}
 \arguments{

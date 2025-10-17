@@ -1,14 +1,3 @@
-setClass("unmarkedFrameOccuRNMulti",
-         contains="unmarkedFrameOccuMulti")
-
-setClass("unmarkedFitOccuRNMulti",
-         representation(
-            detformulas = "list",
-            stateformulas = "list",
-            modelOccupancy = "numeric",
-            K = "numeric"),
-         contains = "unmarkedFit")
-
 occuRNMulti <- function(detformulas, stateformulas, data, modelOccupancy,
                         K = rep(10, length(stateformulas)),
                         starts, method="BFGS", se = TRUE, threads=1, ...){
@@ -26,6 +15,7 @@ occuRNMulti <- function(detformulas, stateformulas, data, modelOccupancy,
     x[order(match(names(x), c("", species_order)))]
   })
   detformulas <- detformulas[species_order]
+  formulas <- list(state = stateformulas, det = detformulas)
   data@ylist <- data@ylist[species_order]
 
   modocc <- rep(0, S)
@@ -43,7 +33,7 @@ occuRNMulti <- function(detformulas, stateformulas, data, modelOccupancy,
   }
 
   data <- as(data, "unmarkedFrameOccuRNMulti")
-  gd <- getDesign(data, detformulas, stateformulas)
+  gd <- getDesign(data, formulas)
 
   if(length(K) == 1){
     K <- rep(K, S)
@@ -122,9 +112,9 @@ occuRNMulti <- function(detformulas, stateformulas, data, modelOccupancy,
   }
 
   umfit <- new("unmarkedFitOccuRNMulti", fitType = "occuRNMulti", call = match.call(),
-                detformulas = detformulas, stateformulas = stateformulas,
+                formlist = formulas,
                 modelOccupancy = modocc, K = K,
-                formula = ~1, data = data,
+                data = data,
                 #sitesRemoved = designMats$removed.sites,
                 estimates = estimateList, AIC = fmAIC, opt = fm,
                 negLogLike = fm$value, nllFun = nll_C)
@@ -133,7 +123,7 @@ occuRNMulti <- function(detformulas, stateformulas, data, modelOccupancy,
 }
 
 setMethod("getDesign", "unmarkedFrameOccuRNMulti",
-  function(umf, detformulas, stateformulas){
+  function(umf, formulas){
   M <- nrow(umf@ylist[[1]])
   J <- ncol(umf@ylist[[1]])
   
@@ -143,7 +133,7 @@ setMethod("getDesign", "unmarkedFrameOccuRNMulti",
   sc <- umf@siteCovs
   if(is.null(sc)) sc <- data.frame(dummy_=rep(1, M))
 
-  mm <- lapply(stateformulas, function(s){
+  mm <- lapply(formulas$state, function(s){
     if(!is.list(s)){
       mf <- model.frame(s, sc, na.action=stats::na.pass)
       return(model.matrix(s, mf))
@@ -169,7 +159,7 @@ setMethod("getDesign", "unmarkedFrameOccuRNMulti",
     oc <- cbind(sc_long, umf@obsCovs)
   }
 
-  vv <- lapply(detformulas, function(x){
+  vv <- lapply(formulas$det, function(x){
     mf <- model.frame(x, oc, na.action=stats::na.pass)
     model.matrix(x, mf)
   })
@@ -305,7 +295,7 @@ setMethod("predict", "unmarkedFitOccuRNMulti",
 
   if(type == "state"){
 
-    depmat <- unmarked:::create_dep_matrix(object@stateformulas)
+    depmat <- unmarked:::create_dep_matrix(object@formlist$state)
 
     top <- apply(depmat, 1, function(x) sum(x) == 0)
     sp_top <- colnames(depmat)[top]
@@ -315,7 +305,7 @@ setMethod("predict", "unmarkedFitOccuRNMulti",
 
     if(missing(newdata) || is.null(newdata)){
       newdata <- NULL 
-      X <- lapply(object@stateformulas, function(x){
+      X <- lapply(object@formlist$state, function(x){
         if(is.list(x)){
           lapply(x, function(z){
                    mf <- model.frame(z, object@data@siteCovs, na.action=stats::na.pass)
@@ -328,7 +318,7 @@ setMethod("predict", "unmarkedFitOccuRNMulti",
       })
       nr <- nrow(object@data@siteCovs)
     } else {
-      X <- lapply(object@stateformulas, function(x){
+      X <- lapply(object@formlist$state, function(x){
         if(is.list(x)){
           lapply(x, function(z) unmarked:::make_mod_matrix(z, object@data@siteCovs, newdata)$X)
         } else {
@@ -377,13 +367,13 @@ setMethod("predict", "unmarkedFitOccuRNMulti",
       det_species <- species
     }
 
-    gd <- unmarked:::getDesign(object@data, object@detformulas, object@stateformulas)
+    gd <- unmarked:::getDesign(object@data, object@formlist)
     od <- unmarked:::get_orig_data(object, "det")
     chunk_size <- 70
   
     if(missing(newdata)) newdata <- NULL
     out <- lapply(det_species, function(i){
-      form <- object@detformulas[[i]]
+      form <- object@formlist$det[[i]]
       cf <- coef(object)
       inds <- which(grepl(paste0("p([",i,"]"), names(cf), fixed=TRUE))
       new_est <- object@estimates@estimates$det
@@ -652,8 +642,8 @@ setMethod("replaceY", "unmarkedFrameOccuRNMulti",
 
 setMethod("rebuild_call", "unmarkedFitOccuRNMulti", function(object){
   cl <- methods::callNextMethod(object)
-  cl[["stateformulas"]] <- quote(object@stateformulas)
-  cl[["detformulas"]] <- quote(object@detformulas)
+  cl[["stateformulas"]] <- quote(object@formlist$state)
+  cl[["detformulas"]] <- quote(object@formlist$det)
   cl[["modelOccupancy"]] <- object@modelOccupancy
   cl[["K"]] <- object@K
   cl

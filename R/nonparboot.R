@@ -1,5 +1,3 @@
-setGeneric("nonparboot", function(object, ...) standardGeneric("nonparboot"))
-
 # Overall nonparboot method; this is the one exported
 setMethod("nonparboot", "unmarkedFit", function(object, B = 1, keepOldSamples = TRUE, ...){
   bsType <- list(...)$bsType
@@ -12,10 +10,6 @@ setMethod("nonparboot", "unmarkedFit", function(object, B = 1, keepOldSamples = 
 })
 
 # Fit-specific internal methods
-setGeneric("nonparboot_internal", function(object, B, keepOldSamples){
-  standardGeneric("nonparboot_internal")
-})
-
 setMethod("nonparboot_internal", "unmarkedFit", 
           function(object, B, keepOldSamples){
 
@@ -57,10 +51,6 @@ setMethod("nonparboot_internal", "unmarkedFit",
 })
 
 # Fit-specific update methods (to handle occuPEN)
-setGeneric("nonparboot_update", function(object, data){
-  standardGeneric("nonparboot_update")
-})
-
 setMethod("nonparboot_update", "unmarkedFit", function(object, data){
   update(object, data = data, se = FALSE)
 })

@@ -1,6 +1,6 @@
 \name{nmixTTD}
 \alias{nmixTTD}
-\title{Fit N-mixture Time-to-detection Models}
+\title{Fit the N-mixture Time-to-detection Model of Strebel et al. (2021)}
 
 \usage{nmixTTD(stateformula= ~1, detformula = ~1, data, K=100,
     mixture = c("P","NB"), ttdDist = c("exp", "weibull"), starts, method="BFGS", 

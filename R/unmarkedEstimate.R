@@ -1,47 +1,3 @@
-
-setClassUnion("matrixOrVector", c("matrix","numeric"))
-
-# Class to store actual parameter estimates
-setClass("unmarkedEstimate",
-    representation(
-        name = "character",
-		short.name = "character",
-        estimates = "numeric",
-        covMat = "matrix",
-        fixed = "numeric",
-        covMatBS = "optionalMatrix",
-        invlink = "character",
-        invlinkGrad = "character",
-        randomVarInfo= "list"),
-    validity = function(object) {
-        errors <- character(0)
-        if(nrow(object@covMat) != length(object@estimates)) {
-        errors <- c(errors,
-            "Size of covMat does not match length of estimates.")
-        }
-    if(length(errors) > 0)
-        errors
-    else
-        TRUE
-    })
-
-setClass("unmarkedEstimateList",
-    representation(estimates = "list"),
-    validity = function(object) {
-        errors <- character(0)
-        for(est in object@estimates) {
-            if(!is(est, "unmarkedEstimate")) {
-                errors <- c("At least one element of unmarkedEstimateList is not an unmarkedEstimate.")
-                break
-                }
-            }
-        if(length(errors) == 0) {
-            return(TRUE)
-        } else {
-            return(errors)
-            }
-    })
-
 setMethod("show", "unmarkedEstimateList",
     function(object) {
       for(est in object@estimates) {
@@ -62,10 +18,6 @@ setMethod("summary", "unmarkedEstimateList",
     invisible(sumList)
 })
 
-setGeneric("estimates",
-    function(object) {
-      standardGeneric("estimates")
-    })
 
 setMethod("estimates", "unmarkedEstimate",
     function(object) {

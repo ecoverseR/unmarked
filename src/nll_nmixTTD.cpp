@@ -9,7 +9,7 @@ using namespace arma;
 
 // [[Rcpp::export]]
 double nll_nmixTTD(const arma::vec beta, const arma::vec y, const arma::vec delta,
-    const arma::mat W, const arma::mat V, const arma::umat pinds,
+    const arma::mat X_state, const arma::mat X_det, const arma::umat pinds,
     const std::string mixture, const std::string tdist, int N, int J, int K,
     const arma::vec naflag, int threads){
 
@@ -18,10 +18,10 @@ double nll_nmixTTD(const arma::vec beta, const arma::vec y, const arma::vec delt
   #endif
 
   //Get abundance lambda values
-  const vec lamN = exp(W * beta.subvec(pinds(0,0), pinds(0,1)));
+  const vec lamN = exp(X_state * beta.subvec(pinds(0,0), pinds(0,1)));
 
   //Get detection lambda values
-  const vec lamP = exp(V * beta.subvec(pinds(1,0), pinds(1,1)));
+  const vec lamP = exp(X_det * beta.subvec(pinds(1,0), pinds(1,1)));
 
   //Get alpha if negative binomial
   double alpha = 1.0;

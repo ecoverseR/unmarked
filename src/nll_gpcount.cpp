@@ -9,9 +9,9 @@ using namespace Rcpp ;
 using namespace arma ;
 
 // [[Rcpp::export]]
-double nll_gpcount(arma::mat ym, arma::mat Xlam, arma::mat Xphi, arma::mat Xp,
-    arma::vec beta_lam, arma::vec beta_phi, arma::vec beta_p, double log_alpha,
-    arma::vec Xlam_offset, arma::vec Xphi_offset, arma::vec Xp_offset,
+double nll_gpcount(arma::mat ym, arma::mat X_lambda, arma::mat X_phi, arma::mat X_det,
+    arma::vec beta_lambda, arma::vec beta_phi, arma::vec beta_det, double log_alpha,
+    arma::vec offset_lambda, arma::vec offset_phi, arma::vec offset_det,
     int M, std::string mixture, int T, int threads){
 
   #ifdef _OPENMP
@@ -27,10 +27,10 @@ double nll_gpcount(arma::mat ym, arma::mat Xlam, arma::mat Xphi, arma::mat Xp,
     alpha = 1.0/(1.0+exp(-log_alpha));
   int R = ym.n_rows;
   int J = ym.n_cols / T;
-  arma::colvec lam = exp(Xlam*beta_lam + Xlam_offset);
-  arma::colvec logit_phi = Xphi*beta_phi + Xphi_offset;
+  arma::colvec lam = exp(X_lambda*beta_lambda + offset_lambda);
+  arma::colvec logit_phi = X_phi*beta_phi + offset_phi;
   arma::mat phiv = 1.0/(1.0+exp(-logit_phi));
-  arma::colvec logit_p = Xp*beta_p + Xp_offset;
+  arma::colvec logit_p = X_det*beta_det + offset_det;
   arma::mat pv = 1.0/(1.0+exp(-logit_p));
   phiv.reshape(T,R);
   arma::mat phi = trans(phiv);
@@ -74,11 +74,11 @@ double nll_gpcount(arma::mat ym, arma::mat Xlam, arma::mat Xphi, arma::mat Xp,
 	    continue;
 	  }
 	  g = 0.0;
-	  if(arma::is_finite(phi(i,t)))
+	  if(std::isfinite(phi(i,t)))
 	    g = Rf_dbinom(n, m, phi(i,t), true);
 	  h = 0.0;
 	  for(int j=0; j<J; j++) {
-	    if(arma::is_finite(y(i,j,t))) { // true if not NA, NaN, +/-Inf
+	    if(std::isfinite(y(i,j,t))) { // true if not NA, NaN, +/-Inf
 	      h += Rf_dbinom(y(i,j,t), n, p(i,j,t), true);
 	    }
 	  }

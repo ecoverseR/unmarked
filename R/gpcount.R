@@ -9,23 +9,11 @@ if(!is(data, "unmarkedFrameGPC"))
 mixture <- match.arg(mixture)
 engine <- match.arg(engine)
 
-formlist <- list(lambdaformula = lambdaformula, phiformula = phiformula,
-    pformula = pformula)
-check_no_support(formlist)
-form <- as.formula(paste(unlist(formlist), collapse=" "))
-D <- getDesign(data, formula = form)
+formulas <- list(lambda = lambdaformula, phi = phiformula, det = pformula)
+check_no_support(formulas)
 
-Xlam <- D$Xlam
-Xphi <- D$Xphi
-Xdet <- D$Xdet
+D <- getDesign(data, formulas)
 ym <- D$y  # MxJT
-
-Xlam.offset <- D$Xlam.offset
-Xphi.offset <- D$Xphi.offset
-Xdet.offset <- D$Xdet.offset
-if(is.null(Xlam.offset)) Xlam.offset <- rep(0, nrow(Xlam))
-if(is.null(Xphi.offset)) Xphi.offset <- rep(0, nrow(Xphi))
-if(is.null(Xdet.offset)) Xdet.offset <- rep(0, nrow(Xdet))
 
 if(missing(K) || is.null(K)) {
     K <- max(ym, na.rm=TRUE) + 100
@@ -41,12 +29,12 @@ J <- numY(data) / T
 
 y <- array(ym, c(I, J, T))
 
-lamPars <- colnames(Xlam)
-detPars <- colnames(Xdet)
-nLP <- ncol(Xlam)
-nPP <- ncol(Xphi)
-phiPars <- colnames(Xphi)
-nDP <- ncol(Xdet)
+lamPars <- colnames(D$X_lambda)
+detPars <- colnames(D$X_det)
+nLP <- ncol(D$X_lambda)
+nPP <- ncol(D$X_phi)
+phiPars <- colnames(D$X_phi)
+nDP <- ncol(D$X_det)
 nP <- nLP + nPP + nDP + (mixture%in%c('NB','ZIP'))
 if(!missing(starts) && length(starts) != nP)
     stop("There should be", nP, "starting values, not", length(starts))
@@ -54,10 +42,10 @@ if(!missing(starts) && length(starts) != nP)
 if(identical(engine, "R")) {
 # Minus negative log-likelihood
 nll <- function(pars) {
-    lam <- exp(Xlam %*% pars[1:nLP] + Xlam.offset)
-    phi <- plogis(Xphi %*% pars[(nLP+1):(nLP+nPP)] + Xphi.offset)
+    lam <- exp(D$X_lambda %*% pars[1:nLP] + D$offset_lambda)
+    phi <- plogis(D$X_phi %*% pars[(nLP+1):(nLP+nPP)] + D$offset_phi)
     phi <- matrix(phi, I, T, byrow=TRUE)
-    p <- plogis(Xdet %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)] + Xdet.offset)
+    p <- plogis(D$X_det %*% pars[(nLP+nPP+1):(nLP+nPP+nDP)] + D$offset_det)
     p <- matrix(p, I, byrow=TRUE)
     p <- array(p, c(I, J, T))  # byrow?
     L <- rep(NA, I)
@@ -99,14 +87,14 @@ nll <- function(pars) {
 } else
 if(identical(engine, "C")) {
     nll <- function(pars) {
-        beta.lam <- pars[1:nLP]
-        beta.phi <- pars[(nLP+1):(nLP+nPP)]
-        beta.p <- pars[(nLP+nPP+1):(nLP+nPP+nDP)]
+        beta_lambda <- pars[1:nLP]
+        beta_phi <- pars[(nLP+1):(nLP+nPP)]
+        beta_det <- pars[(nLP+nPP+1):(nLP+nPP+nDP)]
         log.alpha <- 1
         if(mixture %in% c("NB", "ZIP"))
             log.alpha <- pars[nP]
-        nll_gpcount(ym, Xlam, Xphi, Xdet, beta.lam, beta.phi, beta.p,
-                    log.alpha, Xlam.offset, Xphi.offset, Xdet.offset,
+        nll_gpcount(ym, D$X_lambda, D$X_phi, D$X_det, beta_lambda, beta_phi, beta_det,
+                    log.alpha, D$offset_lambda, D$offset_phi, D$offset_det,
                     as.integer(K), mixture, T, threads)
     }
 }
@@ -156,7 +144,7 @@ if(identical(mixture,"ZIP")) {
 }
 
 umfit <- new("unmarkedFitGPC", fitType = "gpcount",
-    call = match.call(), formula = form, formlist = formlist,
+    call = match.call(), formlist = formulas,
     data = data, estimates = estimateList, sitesRemoved = D$removed.sites,
     AIC = fmAIC, opt = fm, negLogLike = fm$value, nllFun = nll,
     mixture=mixture, K=K)

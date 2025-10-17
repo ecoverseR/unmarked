@@ -23,6 +23,10 @@ double nll_occuCOP(arma::icolvec y, arma::icolvec L,
   int k=0; // counter
   // for each site i in 1:M
   for(int i=0; i<M; i++) {
+    if(!std::isfinite(psi(i))){
+      k += J;
+      continue;
+    }
     double iLambdaL=0.0; // init sum(lambda_ij * L_ij)
     double iN=0.0; // init sum(y) = total count of detec at site i
     int NbRemoved=0; // init count of the removed observations at site i

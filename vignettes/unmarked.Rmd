@@ -82,6 +82,9 @@ analysis, the function `unmarkedFrameOccu` is used.
 
 ## Importing and formatting data
 
+Two examples of reading in data from a CSV and formatting for unmarked.
+First, from a CSV in "wide" format:
+
 ```{r}
 library(unmarked)
 wt <- read.csv(system.file("csv","widewt.csv", package="unmarked"))
@@ -93,36 +96,39 @@ wt <- unmarkedFrameOccu(y = y, siteCovs = siteCovs, obsCovs = obsCovs)
 summary(wt)
 ```
 
-Alternatively, the convenience function `csvToUMF` can be used
+Next, a CSV in "long" format:
 
 ```{r}
-wt <- csvToUMF(system.file("csv","widewt.csv", package="unmarked"),
-               long = FALSE, type = "unmarkedFrameOccu")
-```
+pcru_raw <- read.csv(system.file("csv","frog2001pcru.csv", package="unmarked"))
 
-If not all sites have the same numbers of observations, then manual
-importation of data in long format can be tricky.  `csvToUMF`
-seamlessly handles this situation.
-
-```{r}
-pcru <- csvToUMF(system.file("csv","frog2001pcru.csv", package="unmarked"),
-                 long = TRUE, type = "unmarkedFrameOccu")
-```
-
-To help stabilize the numerical optimization algorithm, we recommend
-standardizing the covariates.
-
-```{r}
-obsCovs(pcru) <- scale(obsCovs(pcru))
+sites <- unique(pcru_raw$RouteNumStopNum)
+M <- length(sites)
+J <- max(table(pcru_raw$RouteNumStopNum))
+y <- JulianDate <- MinAfterSunset <- Wind <- Sky <- Temperature <- matrix(NA, M, J)
+for (i in 1:length(sites)){
+  datsub <- pcru_raw[pcru_raw$RouteNumStopNum == sites[i],]
+  n <- nrow(datsub)
+  y[i,1:n] <- datsub$Pcru
+  JulianDate[i,1:n] <- datsub$JulianDate
+  MinAfterSunset[i,1:n] <- datsub$MinAfterSunset
+  Wind[i,1:n] <- datsub$Wind
+  Sky[i,1:n] <- datsub$Sky
+  Temperature[i,1:n] <- datsub$Temperature
+}
+obscovs <- list(JulianDate = JulianDate, MinAfterSunset = MinAfterSunset,
+                Wind = Wind, Sky = Sky, Temperature = Temperature)
+pcru <- unmarkedFrameOccu(y = y, obsCovs = obscovs)
 ```
 
 ## Fitting models
 
-Occupancy models can then be fit with the occu() function:
+Occupancy models can then be fit with the occu() function.
+To help stabilize the numerical optimization algorithm, we recommend standardizing covariates.
+The best way to do this is to use the `scale()` function on covariates inside your formulas.
 
 ```{r}
 fm1 <- occu(~1 ~1, pcru)
-fm2 <- occu(~ MinAfterSunset + Temperature ~ 1, pcru)
+fm2 <- occu(~ scale(MinAfterSunset) + scale(Temperature) ~ 1, pcru)
 fm2
 ```
 

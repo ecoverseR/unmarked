@@ -1,14 +1,14 @@
+# fitted creates a matrix of fitted values, one per observation
+# So if the observed data are MxJ the result will be an MxJ matrix of fitted
+# values, which are usually calculated as something like 
+# state parameter * detection parameter
+
 # Method for all fit types, exported
+# This method applies to all unmarkedFit types, then internally
+# calls a specific method for each unmarkedFit type (minimizes documentation)
 setMethod("fitted", "unmarkedFit", function(object, ...){
   fitted_internal(object)
 })
-
-
-# Internal method for specific fit type, not exported
-setGeneric("fitted_internal", function(object){
-  standardGeneric("fitted_internal")
-})
-
 
 setMethod("fitted_internal", "unmarkedFit", function(object){
   state <- predict(object, type = "state", level=NULL, na.rm=FALSE)$Predicted
@@ -69,40 +69,83 @@ setMethod("fitted_internal", "unmarkedFitColExt", function(object)
 
 
 setMethod("fitted_internal", "unmarkedFitDS", function(object){
-    data <- object@data
-    db <- data@dist.breaks
-    w <- diff(db)
-    M <- numSites(data)
-    J <- length(w)
     lambda <- predict(object, type = "state", level = NULL, na.rm=FALSE)$Predicted
-    # TODO: use getUA function here
     if(identical(object@output, "density")) {
-        a <- matrix(NA, M, J)
-        switch(data@survey,
-            line = {
-                tlength <- data@tlength
-                A <- tlength * max(db) * 2
-                },
-            point = {
-                A <- pi * max(db)^2
-                })
-        switch(data@unitsIn,
-            m = A <- A / 1e6,
-            km = A <- A)
-        switch(object@unitsOut,
-            m = A <- A * 1e6,
-            ha = A <- A * 100,
-            kmsq = A <- A)
-        lambda <- lambda * A
-        }
+      A <- get_ds_area(object@data, object@unitsOut)
+      lambda <- lambda * A
+    }
     cp <- getP(object, na.rm = FALSE)
     fitted <- lambda * cp
     fitted
 })
 
 
-# This covers unmarkedFitGDS too
-setMethod("fitted_internal", "unmarkedFitGMM", function(object){
+setMethod("fitted_internal", "unmarkedFitGOccu", function(object){
+  M <- numSites(object@data)
+  JT <- obsNum(object@data) 
+
+  psi <- predict(object, type = "psi", level = NULL, na.rm=FALSE)$Predicted
+  psi <- matrix(psi, nrow=M, ncol=JT)
+
+  phi <- predict(object, type = "phi", level = NULL, na.rm=FALSE)$Predicted
+  phi <- rep(phi, each = JT / object@data@numPrimary)
+  phi <- matrix(phi, nrow=M, ncol=JT, byrow=TRUE)
+
+  p <- getP(object)
+
+  psi * phi * p
+})
+
+
+setMethod("fitted_internal", "unmarkedFitGDR", function(object){
+
+  T <- object@data@numPrimary
+
+  lam <- predict(object, "lambda", level=NULL)$Predicted
+  if(object@output == "density"){
+    ua <- getUA(object@data)
+    A <- rowSums(ua$a)
+    switch(object@data@unitsIn, m = A <- A / 1e6, km = A <- A)
+    switch(object@unitsOut,ha = A <- A * 100, kmsq = A <- A)
+    lam <- lam * A
+  }
+
+  gp <- getP(object)
+  rem <- gp$rem
+  dist <- gp$dist
+  if(T > 1) phi <- gp$phi
+  p_rem <- apply(rem, c(1,3), sum)
+  p_dist <- apply(dist, c(1,3), sum)
+
+  for (t in 1:T){
+    rem[,,t] <- rem[,,t] * p_dist[,rep(t, ncol(rem[,,t]))]
+    dist[,,t] <- dist[,,t] * p_rem[,rep(t,ncol(dist[,,t]))]
+    if(T > 1){
+      rem[,,t] <- rem[,,t] * phi[,rep(t, ncol(rem[,,t]))]
+      dist[,,t] <- dist[,,t] * phi[,rep(t, ncol(dist[,,t]))]
+    }
+  }
+
+  if(T > 1){
+    rem_final <- rem[,,1]
+    dist_final <- dist[,,1]
+    for (t in 2:T){
+      rem_final <- cbind(rem_final, rem[,,t])
+      dist_final <- cbind(dist_final, dist[,,t])
+    }
+  } else {
+    rem_final <- drop(rem)
+    dist_final <- drop(dist)
+  }
+
+  ft_rem <- lam * rem_final
+  ft_dist <- lam * dist_final
+  list(dist=ft_dist, rem=ft_rem)
+})
+
+
+# This covers GMM and GDS too
+setMethod("fitted_internal", "unmarkedFitGPC", function(object){
   # E[y_itj] = M_i * phi_it * cp_itj
   M <- numSites(object@data)
   T <- object@data@numPrimary
@@ -129,6 +172,40 @@ setMethod("fitted_internal", "unmarkedFitGMM", function(object){
 })
 
 
+# Fitted method returns a list of matrices, one per data type
+setMethod("fitted_internal", "unmarkedFitIDS", function(object){
+
+  dists <- names(object)[names(object) %in% c("ds", "pc")]
+
+  # If there is an availability model, get availability
+  # Otherwise set it to 1
+  avail <- list(ds=1, pc=1, oc=1)
+  if("phi" %in% names(object)){
+    avail <- getAvail(object)
+  }
+
+  # fitted for distance and N-mix data components
+  out <- lapply(dists, function(x){
+    conv <- IDS_convert_class(object, type=x)
+    fitted(conv) * avail[[x]]
+  })
+  names(out) <- dists
+
+  # fitted for occupancy data
+  if("oc" %in% names(object)){
+    conv <- IDS_convert_class(object, type="oc")
+    lam <- predict(conv, 'state', level = NULL, na.rm=FALSE)$Predicted
+    A <- get_ds_area(conv@data, conv@unitsOut)
+    lam <- lam * A
+
+    p <- getP(conv, na.rm=FALSE) * avail$oc
+    out$oc <- 1 - exp(-lam*p) ## analytical integration.
+  }
+
+  out
+})
+
+
 setMethod("fitted_internal", "unmarkedFitNmixTTD", function(object){
   stop("fitted is not implemented for nmixTTD at this time", call.=FALSE)
 })
@@ -141,6 +218,24 @@ setMethod("fitted_internal", "unmarkedFitOccu", function(object){
     p <- getP(object, na.rm = FALSE) # P(detection | presence)
     fitted <- state * p  # true for models with E[Y] = p * E[X]
     fitted
+})
+
+
+setMethod("fitted_internal", "unmarkedFitOccuCOP", function(object) {
+  state <- predict(object, type = "psi", level=NULL, na.rm=FALSE)$Predicted
+  p <- getP(object, na.rm = FALSE) # P(detection | presence)
+  fitted <- state * p
+  fitted
+})
+
+
+setMethod("fitted_internal", "unmarkedFitOccuComm", function(object){
+  state <- predict(object, type = "state", level=NULL, na.rm=FALSE)
+  p <- getP(object, na.rm = FALSE)
+  fitted <- mapply(function(x, y){
+    x$Predicted * y
+  }, x = state, y = p, SIMPLIFY=FALSE)
+  fitted
 })
 
 
@@ -319,8 +414,7 @@ setMethod("fitted_internal", "unmarkedFitDailMadsen", function(object){
     fix <- tryCatch(object@fix, error=function(e) "none")
     immigration <- tryCatch(object@immigration, error=function(e) FALSE)
     data <- getData(object)
-    D <- getDesign(data, object@formula, na.rm = FALSE)
-    delta <- D$delta #FIXME this isn't returned propertly when na.rm=F
+    delta <- getDesign(data, object@formlist, na.rm = FALSE)$delta
 
     M <- numSites(data)
     T <- data@numPrimary

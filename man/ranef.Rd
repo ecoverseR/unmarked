@@ -50,6 +50,9 @@ for methods used to manipulate the returned object.
 
 \author{Richard Chandler \email{rbchan@uga.edu}}
 
+\seealso{
+\code{\link{unmarkedRanef-class}}, \code{\link{bup}}
+}
 
 \references{
   Laird, N.M. and T.A. Louis. 1987. Empirical Bayes confidence intervals

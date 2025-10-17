@@ -88,3 +88,9 @@ test_that("crossVal works with multinomPois",{
                        c(0.25859,0.17974), tolerance=1e-4)
 
 })
+
+test_that("crossVal errors on models with random effect", {
+  pferUMF@siteCovs$group <- sample(letters[1:5], numSites(pferUMF), replace=TRUE)
+  fm <- occu(~ obsvar1 ~ 1 + (1|group), pferUMF[1:20,])
+  expect_error(crossVal(fm), "random effects")
+})

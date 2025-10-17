@@ -1,6 +1,6 @@
 \name{pcountOpen}
 \alias{pcountOpen}
-\title{Fit the open N-mixture models of Dail and Madsen and extensions}
+\title{Fit the open N-mixture models of Dail and Madsen (2011) and Hostetler and Chandler (2015)}
 \description{Fit the models of Dail and Madsen (2011) and Hostetler and
 Chandler (in press), which are
 generalized forms of the Royle (2004) N-mixture model for open

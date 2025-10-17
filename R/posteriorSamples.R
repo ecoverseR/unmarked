@@ -1,14 +1,3 @@
-setGeneric("posteriorSamples", function(object, nsims, ...){
-             standardGeneric("posteriorSamples")
-          })
-
-setClass("unmarkedPostSamples",
-         representation(numSites="numeric",
-                        numPrimary="numeric",
-                        nsims="numeric",
-                        samples="array")
-         )
-
 setMethod("posteriorSamples", "unmarkedRanef", function(object, nsims=100, ...)
 {
 

@@ -33,7 +33,7 @@ test_that("unmarkedFrameOccuTTD can be constructed",{
   expect_equal(s[3], "100 sites")
 
   hd <- head(umf)
-  expect_equivalent(as(hd, 'data.frame'), as(umf, 'data.frame')[1:10,])
+  expect_equivalent(as(hd, 'data.frame'), as(umf, 'data.frame')[1:6,])
 
   umf_sub <- umf[c(1,3),]
   expect_equivalent(as(umf_sub, 'data.frame'), as(umf, 'data.frame')[c(1,3),])

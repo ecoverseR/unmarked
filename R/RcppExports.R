@@ -13,36 +13,36 @@ nll_distsamp <- function(y, lam, sig, scale, a, u, w, db, keyfun, survey) {
     .Call(`_unmarked_nll_distsamp`, y, lam, sig, scale, a, u, w, db, keyfun, survey)
 }
 
-nll_distsampOpen <- function(y, yt, Xlam, Xgam, Xom, Xsig, Xiota, beta, bi, Xlam_offset, Xgam_offset, Xom_offset, Xsig_offset, Xiota_offset, ytna, lk, mixture, first, last, first1, M, T, delta, dynamics, survey, fix, go_dims, immigration, I, I1, Ib, Ip, a, u, w, db, keyfun, lfac_k, kmyt, lfac_kmyt, fin, A) {
-    .Call(`_unmarked_nll_distsampOpen`, y, yt, Xlam, Xgam, Xom, Xsig, Xiota, beta, bi, Xlam_offset, Xgam_offset, Xom_offset, Xsig_offset, Xiota_offset, ytna, lk, mixture, first, last, first1, M, T, delta, dynamics, survey, fix, go_dims, immigration, I, I1, Ib, Ip, a, u, w, db, keyfun, lfac_k, kmyt, lfac_kmyt, fin, A)
+nll_distsampOpen <- function(y, yt, X_lambda, X_gamma, X_omega, X_det, X_iota, beta, bi, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, lk, mixture, first, last, first1, M, T, delta, dynamics, survey, fix, go_dims, immigration, I, I1, Ib, Ip, a, u, w, db, keyfun, lfac_k, kmyt, lfac_kmyt, fin, A) {
+    .Call(`_unmarked_nll_distsampOpen`, y, yt, X_lambda, X_gamma, X_omega, X_det, X_iota, beta, bi, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, lk, mixture, first, last, first1, M, T, delta, dynamics, survey, fix, go_dims, immigration, I, I1, Ib, Ip, a, u, w, db, keyfun, lfac_k, kmyt, lfac_kmyt, fin, A)
 }
 
-nll_gdistremoval <- function(beta, n_param, yDistance, yRemoval, ysum, mixture, keyfun, Xlam, A, Xphi, Xrem, Xdist, db, a, u, w, pl, K, Kmin, threads) {
-    .Call(`_unmarked_nll_gdistremoval`, beta, n_param, yDistance, yRemoval, ysum, mixture, keyfun, Xlam, A, Xphi, Xrem, Xdist, db, a, u, w, pl, K, Kmin, threads)
+nll_gdistremoval <- function(beta, n_param, yDistance, yRemoval, ysum, mixture, keyfun, X_lambda, A, X_phi, X_rem, X_dist, db, a, u, w, pl, K, Kmin, threads) {
+    .Call(`_unmarked_nll_gdistremoval`, beta, n_param, yDistance, yRemoval, ysum, mixture, keyfun, X_lambda, A, X_phi, X_rem, X_dist, db, a, u, w, pl, K, Kmin, threads)
 }
 
-nll_gdistsamp <- function(beta, n_param, y, mixture, keyfun, survey, Xlam, Xlam_offset, A, Xphi, Xphi_offset, Xdet, Xdet_offset, db, a, u, w, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads) {
-    .Call(`_unmarked_nll_gdistsamp`, beta, n_param, y, mixture, keyfun, survey, Xlam, Xlam_offset, A, Xphi, Xphi_offset, Xdet, Xdet_offset, db, a, u, w, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads)
+nll_gdistsamp <- function(beta, n_param, y, mixture, keyfun, survey, X_lambda, offset_lambda, A, X_phi, offset_phi, X_det, offset_det, db, a, u, w, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads) {
+    .Call(`_unmarked_nll_gdistsamp`, beta, n_param, y, mixture, keyfun, survey, X_lambda, offset_lambda, A, X_phi, offset_phi, X_det, offset_det, db, a, u, w, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads)
 }
 
-nll_gmultmix <- function(beta, n_param, y, mixture, pi_fun, Xlam, Xlam_offset, Xphi, Xphi_offset, Xdet, Xdet_offset, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads) {
-    .Call(`_unmarked_nll_gmultmix`, beta, n_param, y, mixture, pi_fun, Xlam, Xlam_offset, Xphi, Xphi_offset, Xdet, Xdet_offset, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads)
+nll_gmultmix <- function(beta, n_param, y, mixture, pi_fun, X_lambda, offset_lambda, X_phi, offset_phi, X_det, offset_det, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads) {
+    .Call(`_unmarked_nll_gmultmix`, beta, n_param, y, mixture, pi_fun, X_lambda, offset_lambda, X_phi, offset_phi, X_det, offset_det, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads)
 }
 
-nll_gpcount <- function(ym, Xlam, Xphi, Xp, beta_lam, beta_phi, beta_p, log_alpha, Xlam_offset, Xphi_offset, Xp_offset, M, mixture, T, threads) {
-    .Call(`_unmarked_nll_gpcount`, ym, Xlam, Xphi, Xp, beta_lam, beta_phi, beta_p, log_alpha, Xlam_offset, Xphi_offset, Xp_offset, M, mixture, T, threads)
+nll_gpcount <- function(ym, X_lambda, X_phi, X_det, beta_lambda, beta_phi, beta_det, log_alpha, offset_lambda, offset_phi, offset_det, M, mixture, T, threads) {
+    .Call(`_unmarked_nll_gpcount`, ym, X_lambda, X_phi, X_det, beta_lambda, beta_phi, beta_det, log_alpha, offset_lambda, offset_phi, offset_det, M, mixture, T, threads)
 }
 
 nll_multinomPois <- function(beta, pi_fun, Xlam, Xlam_offset, Xdet, Xdet_offset, y, navec, nP, nAP) {
     .Call(`_unmarked_nll_multinomPois`, beta, pi_fun, Xlam, Xlam_offset, Xdet, Xdet_offset, y, navec, nP, nAP)
 }
 
-nll_multmixOpen <- function(y, yt, Xlam, Xgam, Xom, Xp, Xiota, beta, bi, Xlam_offset, Xgam_offset, Xom_offset, Xp_offset, Xiota_offset, ytna, yna, lk, mixture, first, last, first1, M, T, J, R, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip, pi_fun, lfac_k, kmyt, lfac_kmyt, fin) {
-    .Call(`_unmarked_nll_multmixOpen`, y, yt, Xlam, Xgam, Xom, Xp, Xiota, beta, bi, Xlam_offset, Xgam_offset, Xom_offset, Xp_offset, Xiota_offset, ytna, yna, lk, mixture, first, last, first1, M, T, J, R, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip, pi_fun, lfac_k, kmyt, lfac_kmyt, fin)
+nll_multmixOpen <- function(y, yt, X_lambda, X_gamma, X_omega, X_det, X_iota, beta, bi, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, yna, lk, mixture, first, last, first1, M, T, J, R, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip, pi_fun, lfac_k, kmyt, lfac_kmyt, fin) {
+    .Call(`_unmarked_nll_multmixOpen`, y, yt, X_lambda, X_gamma, X_omega, X_det, X_iota, beta, bi, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, yna, lk, mixture, first, last, first1, M, T, J, R, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip, pi_fun, lfac_k, kmyt, lfac_kmyt, fin)
 }
 
-nll_nmixTTD <- function(beta, y, delta, W, V, pinds, mixture, tdist, N, J, K, naflag, threads) {
-    .Call(`_unmarked_nll_nmixTTD`, beta, y, delta, W, V, pinds, mixture, tdist, N, J, K, naflag, threads)
+nll_nmixTTD <- function(beta, y, delta, X_state, X_det, pinds, mixture, tdist, N, J, K, naflag, threads) {
+    .Call(`_unmarked_nll_nmixTTD`, beta, y, delta, X_state, X_det, pinds, mixture, tdist, N, J, K, naflag, threads)
 }
 
 nll_occu <- function(y, X, V, beta_psi, beta_p, nd, knownOcc, navec, X_offset, V_offset, link_psi) {
@@ -77,15 +77,15 @@ nll_occuRNMulti <- function(beta, state_ind, det_ind, S, modOcc, ylist, Xlist, V
     .Call(`_unmarked_nll_occuRNMulti`, beta, state_ind, det_ind, S, modOcc, ylist, Xlist, Vlist, dep, K, Kmin, miss, site_miss, threads)
 }
 
-nll_occuTTD <- function(beta, y, delta, W, V, Xgam, Xeps, pind, dind, cind, eind, lpsi, tdist, N, T, J, naflag) {
-    .Call(`_unmarked_nll_occuTTD`, beta, y, delta, W, V, Xgam, Xeps, pind, dind, cind, eind, lpsi, tdist, N, T, J, naflag)
+nll_occuTTD <- function(beta, y, delta, X_psi, X_det, X_col, X_ext, pind, dind, cind, eind, lpsi, tdist, N, T, J, naflag) {
+    .Call(`_unmarked_nll_occuTTD`, beta, y, delta, X_psi, X_det, X_col, X_ext, pind, dind, cind, eind, lpsi, tdist, N, T, J, naflag)
 }
 
 nll_pcount <- function(beta, n_param, y, X, V, X_offset, V_offset, K, Kmin, mixture, threads) {
     .Call(`_unmarked_nll_pcount`, beta, n_param, y, X, V, X_offset, V_offset, K, Kmin, mixture, threads)
 }
 
-nll_pcountOpen <- function(ym, Xlam, Xgam, Xom, Xp, Xiota, beta_lam, beta_gam, beta_om, beta_p, beta_iota, log_alpha, Xlam_offset, Xgam_offset, Xom_offset, Xp_offset, Xiota_offset, ytna, ynam, lk, mixture, first, last, M, J, T, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip) {
-    .Call(`_unmarked_nll_pcountOpen`, ym, Xlam, Xgam, Xom, Xp, Xiota, beta_lam, beta_gam, beta_om, beta_p, beta_iota, log_alpha, Xlam_offset, Xgam_offset, Xom_offset, Xp_offset, Xiota_offset, ytna, ynam, lk, mixture, first, last, M, J, T, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip)
+nll_pcountOpen <- function(ym, X_lambda, X_gamma, X_omega, X_det, X_iota, beta_lam, beta_gam, beta_om, beta_p, beta_iota, log_alpha, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, ynam, lk, mixture, first, last, M, J, T, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip) {
+    .Call(`_unmarked_nll_pcountOpen`, ym, X_lambda, X_gamma, X_omega, X_det, X_iota, beta_lam, beta_gam, beta_om, beta_p, beta_iota, log_alpha, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, ynam, lk, mixture, first, last, M, J, T, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip)
 }
 

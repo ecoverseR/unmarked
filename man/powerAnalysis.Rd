@@ -4,7 +4,7 @@
 \alias{powerAnalysis,list-method}
 \alias{powerAnalysis,unmarkedFit-method}
 
-\title{Conduct a power analysis for an unmarked model}
+\title{Conduct a power analysis for an \code{unmarked} model}
 
 \description{
 This function uses a simulation-based approach to estimate power for parameters 

@@ -59,25 +59,25 @@ BEGIN_RCPP
 END_RCPP
 }
 // nll_distsampOpen
-double nll_distsampOpen(arma::ucube y, arma::imat yt, arma::mat Xlam, arma::mat Xgam, arma::mat Xom, arma::mat Xsig, arma::mat Xiota, arma::vec beta, arma::umat bi, arma::colvec Xlam_offset, arma::colvec Xgam_offset, arma::colvec Xom_offset, arma::colvec Xsig_offset, arma::colvec Xiota_offset, arma::imat ytna, int lk, std::string mixture, Rcpp::IntegerVector first, Rcpp::IntegerVector last, int first1, int M, int T, arma::imat delta, std::string dynamics, std::string survey, std::string fix, std::string go_dims, bool immigration, arma::imat I, arma::imat I1, Rcpp::List Ib, Rcpp::List Ip, arma::mat a, arma::mat u, arma::vec w, arma::vec db, std::string keyfun, arma::vec lfac_k, arma::cube kmyt, arma::cube lfac_kmyt, arma::icube fin, arma::vec A);
-RcppExport SEXP _unmarked_nll_distsampOpen(SEXP ySEXP, SEXP ytSEXP, SEXP XlamSEXP, SEXP XgamSEXP, SEXP XomSEXP, SEXP XsigSEXP, SEXP XiotaSEXP, SEXP betaSEXP, SEXP biSEXP, SEXP Xlam_offsetSEXP, SEXP Xgam_offsetSEXP, SEXP Xom_offsetSEXP, SEXP Xsig_offsetSEXP, SEXP Xiota_offsetSEXP, SEXP ytnaSEXP, SEXP lkSEXP, SEXP mixtureSEXP, SEXP firstSEXP, SEXP lastSEXP, SEXP first1SEXP, SEXP MSEXP, SEXP TSEXP, SEXP deltaSEXP, SEXP dynamicsSEXP, SEXP surveySEXP, SEXP fixSEXP, SEXP go_dimsSEXP, SEXP immigrationSEXP, SEXP ISEXP, SEXP I1SEXP, SEXP IbSEXP, SEXP IpSEXP, SEXP aSEXP, SEXP uSEXP, SEXP wSEXP, SEXP dbSEXP, SEXP keyfunSEXP, SEXP lfac_kSEXP, SEXP kmytSEXP, SEXP lfac_kmytSEXP, SEXP finSEXP, SEXP ASEXP) {
+double nll_distsampOpen(arma::ucube y, arma::imat yt, arma::mat X_lambda, arma::mat X_gamma, arma::mat X_omega, arma::mat X_det, arma::mat X_iota, arma::vec beta, arma::umat bi, arma::colvec offset_lambda, arma::colvec offset_gamma, arma::colvec offset_omega, arma::colvec offset_det, arma::colvec offset_iota, arma::imat ytna, int lk, std::string mixture, Rcpp::IntegerVector first, Rcpp::IntegerVector last, int first1, int M, int T, arma::imat delta, std::string dynamics, std::string survey, std::string fix, std::string go_dims, bool immigration, arma::imat I, arma::imat I1, Rcpp::List Ib, Rcpp::List Ip, arma::mat a, arma::mat u, arma::vec w, arma::vec db, std::string keyfun, arma::vec lfac_k, arma::cube kmyt, arma::cube lfac_kmyt, arma::icube fin, arma::vec A);
+RcppExport SEXP _unmarked_nll_distsampOpen(SEXP ySEXP, SEXP ytSEXP, SEXP X_lambdaSEXP, SEXP X_gammaSEXP, SEXP X_omegaSEXP, SEXP X_detSEXP, SEXP X_iotaSEXP, SEXP betaSEXP, SEXP biSEXP, SEXP offset_lambdaSEXP, SEXP offset_gammaSEXP, SEXP offset_omegaSEXP, SEXP offset_detSEXP, SEXP offset_iotaSEXP, SEXP ytnaSEXP, SEXP lkSEXP, SEXP mixtureSEXP, SEXP firstSEXP, SEXP lastSEXP, SEXP first1SEXP, SEXP MSEXP, SEXP TSEXP, SEXP deltaSEXP, SEXP dynamicsSEXP, SEXP surveySEXP, SEXP fixSEXP, SEXP go_dimsSEXP, SEXP immigrationSEXP, SEXP ISEXP, SEXP I1SEXP, SEXP IbSEXP, SEXP IpSEXP, SEXP aSEXP, SEXP uSEXP, SEXP wSEXP, SEXP dbSEXP, SEXP keyfunSEXP, SEXP lfac_kSEXP, SEXP kmytSEXP, SEXP lfac_kmytSEXP, SEXP finSEXP, SEXP ASEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::ucube >::type y(ySEXP);
     Rcpp::traits::input_parameter< arma::imat >::type yt(ytSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xgam(XgamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xom(XomSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xsig(XsigSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xiota(XiotaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_gamma(X_gammaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_omega(X_omegaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_iota(X_iotaSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< arma::umat >::type bi(biSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xlam_offset(Xlam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xgam_offset(Xgam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xom_offset(Xom_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xsig_offset(Xsig_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xiota_offset(Xiota_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_lambda(offset_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_gamma(offset_gammaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_omega(offset_omegaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_det(offset_detSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_iota(offset_iotaSEXP);
     Rcpp::traits::input_parameter< arma::imat >::type ytna(ytnaSEXP);
     Rcpp::traits::input_parameter< int >::type lk(lkSEXP);
     Rcpp::traits::input_parameter< std::string >::type mixture(mixtureSEXP);
@@ -106,13 +106,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::cube >::type lfac_kmyt(lfac_kmytSEXP);
     Rcpp::traits::input_parameter< arma::icube >::type fin(finSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type A(ASEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_distsampOpen(y, yt, Xlam, Xgam, Xom, Xsig, Xiota, beta, bi, Xlam_offset, Xgam_offset, Xom_offset, Xsig_offset, Xiota_offset, ytna, lk, mixture, first, last, first1, M, T, delta, dynamics, survey, fix, go_dims, immigration, I, I1, Ib, Ip, a, u, w, db, keyfun, lfac_k, kmyt, lfac_kmyt, fin, A));
+    rcpp_result_gen = Rcpp::wrap(nll_distsampOpen(y, yt, X_lambda, X_gamma, X_omega, X_det, X_iota, beta, bi, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, lk, mixture, first, last, first1, M, T, delta, dynamics, survey, fix, go_dims, immigration, I, I1, Ib, Ip, a, u, w, db, keyfun, lfac_k, kmyt, lfac_kmyt, fin, A));
     return rcpp_result_gen;
 END_RCPP
 }
 // nll_gdistremoval
-double nll_gdistremoval(arma::vec beta, arma::uvec n_param, arma::vec yDistance, arma::vec yRemoval, arma::mat ysum, int mixture, std::string keyfun, arma::mat Xlam, arma::vec A, arma::mat Xphi, arma::mat Xrem, arma::mat Xdist, arma::vec db, arma::mat a, arma::mat u, arma::vec w, arma::uvec pl, int K, arma::uvec Kmin, int threads);
-RcppExport SEXP _unmarked_nll_gdistremoval(SEXP betaSEXP, SEXP n_paramSEXP, SEXP yDistanceSEXP, SEXP yRemovalSEXP, SEXP ysumSEXP, SEXP mixtureSEXP, SEXP keyfunSEXP, SEXP XlamSEXP, SEXP ASEXP, SEXP XphiSEXP, SEXP XremSEXP, SEXP XdistSEXP, SEXP dbSEXP, SEXP aSEXP, SEXP uSEXP, SEXP wSEXP, SEXP plSEXP, SEXP KSEXP, SEXP KminSEXP, SEXP threadsSEXP) {
+double nll_gdistremoval(arma::vec beta, arma::uvec n_param, arma::vec yDistance, arma::vec yRemoval, arma::mat ysum, int mixture, std::string keyfun, arma::mat X_lambda, arma::vec A, arma::mat X_phi, arma::mat X_rem, arma::mat X_dist, arma::vec db, arma::mat a, arma::mat u, arma::vec w, arma::uvec pl, int K, arma::uvec Kmin, int threads);
+RcppExport SEXP _unmarked_nll_gdistremoval(SEXP betaSEXP, SEXP n_paramSEXP, SEXP yDistanceSEXP, SEXP yRemovalSEXP, SEXP ysumSEXP, SEXP mixtureSEXP, SEXP keyfunSEXP, SEXP X_lambdaSEXP, SEXP ASEXP, SEXP X_phiSEXP, SEXP X_remSEXP, SEXP X_distSEXP, SEXP dbSEXP, SEXP aSEXP, SEXP uSEXP, SEXP wSEXP, SEXP plSEXP, SEXP KSEXP, SEXP KminSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -123,11 +123,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type ysum(ysumSEXP);
     Rcpp::traits::input_parameter< int >::type mixture(mixtureSEXP);
     Rcpp::traits::input_parameter< std::string >::type keyfun(keyfunSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type A(ASEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xphi(XphiSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xrem(XremSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xdist(XdistSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_phi(X_phiSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_rem(X_remSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_dist(X_distSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type db(dbSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type a(aSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
@@ -136,13 +136,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type K(KSEXP);
     Rcpp::traits::input_parameter< arma::uvec >::type Kmin(KminSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_gdistremoval(beta, n_param, yDistance, yRemoval, ysum, mixture, keyfun, Xlam, A, Xphi, Xrem, Xdist, db, a, u, w, pl, K, Kmin, threads));
+    rcpp_result_gen = Rcpp::wrap(nll_gdistremoval(beta, n_param, yDistance, yRemoval, ysum, mixture, keyfun, X_lambda, A, X_phi, X_rem, X_dist, db, a, u, w, pl, K, Kmin, threads));
     return rcpp_result_gen;
 END_RCPP
 }
 // nll_gdistsamp
-double nll_gdistsamp(arma::vec beta, arma::uvec n_param, arma::vec y, int mixture, std::string keyfun, std::string survey, arma::mat Xlam, arma::vec Xlam_offset, arma::vec A, arma::mat Xphi, arma::vec Xphi_offset, arma::mat Xdet, arma::vec Xdet_offset, arma::vec db, arma::mat a, arma::mat u, arma::vec w, arma::vec k, arma::vec lfac_k, arma::vec lfac_kmyt, arma::vec kmyt, arma::uvec Kmin, int threads);
-RcppExport SEXP _unmarked_nll_gdistsamp(SEXP betaSEXP, SEXP n_paramSEXP, SEXP ySEXP, SEXP mixtureSEXP, SEXP keyfunSEXP, SEXP surveySEXP, SEXP XlamSEXP, SEXP Xlam_offsetSEXP, SEXP ASEXP, SEXP XphiSEXP, SEXP Xphi_offsetSEXP, SEXP XdetSEXP, SEXP Xdet_offsetSEXP, SEXP dbSEXP, SEXP aSEXP, SEXP uSEXP, SEXP wSEXP, SEXP kSEXP, SEXP lfac_kSEXP, SEXP lfac_kmytSEXP, SEXP kmytSEXP, SEXP KminSEXP, SEXP threadsSEXP) {
+double nll_gdistsamp(arma::vec beta, arma::uvec n_param, arma::vec y, int mixture, std::string keyfun, std::string survey, arma::mat X_lambda, arma::vec offset_lambda, arma::vec A, arma::mat X_phi, arma::vec offset_phi, arma::mat X_det, arma::vec offset_det, arma::vec db, arma::mat a, arma::mat u, arma::vec w, arma::vec k, arma::vec lfac_k, arma::vec lfac_kmyt, arma::vec kmyt, arma::uvec Kmin, int threads);
+RcppExport SEXP _unmarked_nll_gdistsamp(SEXP betaSEXP, SEXP n_paramSEXP, SEXP ySEXP, SEXP mixtureSEXP, SEXP keyfunSEXP, SEXP surveySEXP, SEXP X_lambdaSEXP, SEXP offset_lambdaSEXP, SEXP ASEXP, SEXP X_phiSEXP, SEXP offset_phiSEXP, SEXP X_detSEXP, SEXP offset_detSEXP, SEXP dbSEXP, SEXP aSEXP, SEXP uSEXP, SEXP wSEXP, SEXP kSEXP, SEXP lfac_kSEXP, SEXP lfac_kmytSEXP, SEXP kmytSEXP, SEXP KminSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -152,13 +152,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type mixture(mixtureSEXP);
     Rcpp::traits::input_parameter< std::string >::type keyfun(keyfunSEXP);
     Rcpp::traits::input_parameter< std::string >::type survey(surveySEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xlam_offset(Xlam_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_lambda(offset_lambdaSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type A(ASEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xphi(XphiSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xphi_offset(Xphi_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xdet(XdetSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xdet_offset(Xdet_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_phi(X_phiSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_phi(offset_phiSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_det(offset_detSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type db(dbSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type a(aSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
@@ -169,13 +169,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::vec >::type kmyt(kmytSEXP);
     Rcpp::traits::input_parameter< arma::uvec >::type Kmin(KminSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_gdistsamp(beta, n_param, y, mixture, keyfun, survey, Xlam, Xlam_offset, A, Xphi, Xphi_offset, Xdet, Xdet_offset, db, a, u, w, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads));
+    rcpp_result_gen = Rcpp::wrap(nll_gdistsamp(beta, n_param, y, mixture, keyfun, survey, X_lambda, offset_lambda, A, X_phi, offset_phi, X_det, offset_det, db, a, u, w, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads));
     return rcpp_result_gen;
 END_RCPP
 }
 // nll_gmultmix
-double nll_gmultmix(arma::vec beta, arma::uvec n_param, arma::vec y, int mixture, std::string pi_fun, arma::mat Xlam, arma::vec Xlam_offset, arma::mat Xphi, arma::vec Xphi_offset, arma::mat Xdet, arma::vec Xdet_offset, arma::vec k, arma::vec lfac_k, arma::cube lfac_kmyt, arma::cube kmyt, arma::vec Kmin, int threads);
-RcppExport SEXP _unmarked_nll_gmultmix(SEXP betaSEXP, SEXP n_paramSEXP, SEXP ySEXP, SEXP mixtureSEXP, SEXP pi_funSEXP, SEXP XlamSEXP, SEXP Xlam_offsetSEXP, SEXP XphiSEXP, SEXP Xphi_offsetSEXP, SEXP XdetSEXP, SEXP Xdet_offsetSEXP, SEXP kSEXP, SEXP lfac_kSEXP, SEXP lfac_kmytSEXP, SEXP kmytSEXP, SEXP KminSEXP, SEXP threadsSEXP) {
+double nll_gmultmix(arma::vec beta, arma::uvec n_param, arma::vec y, int mixture, std::string pi_fun, arma::mat X_lambda, arma::vec offset_lambda, arma::mat X_phi, arma::vec offset_phi, arma::mat X_det, arma::vec offset_det, arma::vec k, arma::vec lfac_k, arma::vec lfac_kmyt, arma::vec kmyt, arma::vec Kmin, int threads);
+RcppExport SEXP _unmarked_nll_gmultmix(SEXP betaSEXP, SEXP n_paramSEXP, SEXP ySEXP, SEXP mixtureSEXP, SEXP pi_funSEXP, SEXP X_lambdaSEXP, SEXP offset_lambdaSEXP, SEXP X_phiSEXP, SEXP offset_phiSEXP, SEXP X_detSEXP, SEXP offset_detSEXP, SEXP kSEXP, SEXP lfac_kSEXP, SEXP lfac_kmytSEXP, SEXP kmytSEXP, SEXP KminSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -184,44 +184,44 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::vec >::type y(ySEXP);
     Rcpp::traits::input_parameter< int >::type mixture(mixtureSEXP);
     Rcpp::traits::input_parameter< std::string >::type pi_fun(pi_funSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xlam_offset(Xlam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xphi(XphiSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xphi_offset(Xphi_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xdet(XdetSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xdet_offset(Xdet_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_lambda(offset_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_phi(X_phiSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_phi(offset_phiSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_det(offset_detSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type k(kSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type lfac_k(lfac_kSEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type lfac_kmyt(lfac_kmytSEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type kmyt(kmytSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type lfac_kmyt(lfac_kmytSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type kmyt(kmytSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type Kmin(KminSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_gmultmix(beta, n_param, y, mixture, pi_fun, Xlam, Xlam_offset, Xphi, Xphi_offset, Xdet, Xdet_offset, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads));
+    rcpp_result_gen = Rcpp::wrap(nll_gmultmix(beta, n_param, y, mixture, pi_fun, X_lambda, offset_lambda, X_phi, offset_phi, X_det, offset_det, k, lfac_k, lfac_kmyt, kmyt, Kmin, threads));
     return rcpp_result_gen;
 END_RCPP
 }
 // nll_gpcount
-double nll_gpcount(arma::mat ym, arma::mat Xlam, arma::mat Xphi, arma::mat Xp, arma::vec beta_lam, arma::vec beta_phi, arma::vec beta_p, double log_alpha, arma::vec Xlam_offset, arma::vec Xphi_offset, arma::vec Xp_offset, int M, std::string mixture, int T, int threads);
-RcppExport SEXP _unmarked_nll_gpcount(SEXP ymSEXP, SEXP XlamSEXP, SEXP XphiSEXP, SEXP XpSEXP, SEXP beta_lamSEXP, SEXP beta_phiSEXP, SEXP beta_pSEXP, SEXP log_alphaSEXP, SEXP Xlam_offsetSEXP, SEXP Xphi_offsetSEXP, SEXP Xp_offsetSEXP, SEXP MSEXP, SEXP mixtureSEXP, SEXP TSEXP, SEXP threadsSEXP) {
+double nll_gpcount(arma::mat ym, arma::mat X_lambda, arma::mat X_phi, arma::mat X_det, arma::vec beta_lambda, arma::vec beta_phi, arma::vec beta_det, double log_alpha, arma::vec offset_lambda, arma::vec offset_phi, arma::vec offset_det, int M, std::string mixture, int T, int threads);
+RcppExport SEXP _unmarked_nll_gpcount(SEXP ymSEXP, SEXP X_lambdaSEXP, SEXP X_phiSEXP, SEXP X_detSEXP, SEXP beta_lambdaSEXP, SEXP beta_phiSEXP, SEXP beta_detSEXP, SEXP log_alphaSEXP, SEXP offset_lambdaSEXP, SEXP offset_phiSEXP, SEXP offset_detSEXP, SEXP MSEXP, SEXP mixtureSEXP, SEXP TSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type ym(ymSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xphi(XphiSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xp(XpSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type beta_lam(beta_lamSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_phi(X_phiSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type beta_lambda(beta_lambdaSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type beta_phi(beta_phiSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type beta_p(beta_pSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type beta_det(beta_detSEXP);
     Rcpp::traits::input_parameter< double >::type log_alpha(log_alphaSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xlam_offset(Xlam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xphi_offset(Xphi_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type Xp_offset(Xp_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_lambda(offset_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_phi(offset_phiSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_det(offset_detSEXP);
     Rcpp::traits::input_parameter< int >::type M(MSEXP);
     Rcpp::traits::input_parameter< std::string >::type mixture(mixtureSEXP);
     Rcpp::traits::input_parameter< int >::type T(TSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_gpcount(ym, Xlam, Xphi, Xp, beta_lam, beta_phi, beta_p, log_alpha, Xlam_offset, Xphi_offset, Xp_offset, M, mixture, T, threads));
+    rcpp_result_gen = Rcpp::wrap(nll_gpcount(ym, X_lambda, X_phi, X_det, beta_lambda, beta_phi, beta_det, log_alpha, offset_lambda, offset_phi, offset_det, M, mixture, T, threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -246,25 +246,25 @@ BEGIN_RCPP
 END_RCPP
 }
 // nll_multmixOpen
-double nll_multmixOpen(arma::ucube y, arma::imat yt, arma::mat Xlam, arma::mat Xgam, arma::mat Xom, arma::mat Xp, arma::mat Xiota, arma::vec beta, arma::umat bi, arma::colvec Xlam_offset, arma::colvec Xgam_offset, arma::colvec Xom_offset, arma::colvec Xp_offset, arma::colvec Xiota_offset, arma::imat ytna, arma::ucube yna, int lk, std::string mixture, Rcpp::IntegerVector first, Rcpp::IntegerVector last, int first1, int M, int T, int J, int R, arma::imat delta, std::string dynamics, std::string fix, std::string go_dims, bool immigration, arma::imat I, arma::imat I1, Rcpp::List Ib, Rcpp::List Ip, std::string pi_fun, arma::vec lfac_k, arma::cube kmyt, arma::cube lfac_kmyt, arma::icube fin);
-RcppExport SEXP _unmarked_nll_multmixOpen(SEXP ySEXP, SEXP ytSEXP, SEXP XlamSEXP, SEXP XgamSEXP, SEXP XomSEXP, SEXP XpSEXP, SEXP XiotaSEXP, SEXP betaSEXP, SEXP biSEXP, SEXP Xlam_offsetSEXP, SEXP Xgam_offsetSEXP, SEXP Xom_offsetSEXP, SEXP Xp_offsetSEXP, SEXP Xiota_offsetSEXP, SEXP ytnaSEXP, SEXP ynaSEXP, SEXP lkSEXP, SEXP mixtureSEXP, SEXP firstSEXP, SEXP lastSEXP, SEXP first1SEXP, SEXP MSEXP, SEXP TSEXP, SEXP JSEXP, SEXP RSEXP, SEXP deltaSEXP, SEXP dynamicsSEXP, SEXP fixSEXP, SEXP go_dimsSEXP, SEXP immigrationSEXP, SEXP ISEXP, SEXP I1SEXP, SEXP IbSEXP, SEXP IpSEXP, SEXP pi_funSEXP, SEXP lfac_kSEXP, SEXP kmytSEXP, SEXP lfac_kmytSEXP, SEXP finSEXP) {
+double nll_multmixOpen(arma::ucube y, arma::imat yt, arma::mat X_lambda, arma::mat X_gamma, arma::mat X_omega, arma::mat X_det, arma::mat X_iota, arma::vec beta, arma::umat bi, arma::colvec offset_lambda, arma::colvec offset_gamma, arma::colvec offset_omega, arma::colvec offset_det, arma::colvec offset_iota, arma::imat ytna, arma::ucube yna, int lk, std::string mixture, Rcpp::IntegerVector first, Rcpp::IntegerVector last, int first1, int M, int T, int J, int R, arma::imat delta, std::string dynamics, std::string fix, std::string go_dims, bool immigration, arma::imat I, arma::imat I1, Rcpp::List Ib, Rcpp::List Ip, std::string pi_fun, arma::vec lfac_k, arma::cube kmyt, arma::cube lfac_kmyt, arma::icube fin);
+RcppExport SEXP _unmarked_nll_multmixOpen(SEXP ySEXP, SEXP ytSEXP, SEXP X_lambdaSEXP, SEXP X_gammaSEXP, SEXP X_omegaSEXP, SEXP X_detSEXP, SEXP X_iotaSEXP, SEXP betaSEXP, SEXP biSEXP, SEXP offset_lambdaSEXP, SEXP offset_gammaSEXP, SEXP offset_omegaSEXP, SEXP offset_detSEXP, SEXP offset_iotaSEXP, SEXP ytnaSEXP, SEXP ynaSEXP, SEXP lkSEXP, SEXP mixtureSEXP, SEXP firstSEXP, SEXP lastSEXP, SEXP first1SEXP, SEXP MSEXP, SEXP TSEXP, SEXP JSEXP, SEXP RSEXP, SEXP deltaSEXP, SEXP dynamicsSEXP, SEXP fixSEXP, SEXP go_dimsSEXP, SEXP immigrationSEXP, SEXP ISEXP, SEXP I1SEXP, SEXP IbSEXP, SEXP IpSEXP, SEXP pi_funSEXP, SEXP lfac_kSEXP, SEXP kmytSEXP, SEXP lfac_kmytSEXP, SEXP finSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::ucube >::type y(ySEXP);
     Rcpp::traits::input_parameter< arma::imat >::type yt(ytSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xgam(XgamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xom(XomSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xp(XpSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xiota(XiotaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_gamma(X_gammaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_omega(X_omegaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_iota(X_iotaSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< arma::umat >::type bi(biSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xlam_offset(Xlam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xgam_offset(Xgam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xom_offset(Xom_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xp_offset(Xp_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xiota_offset(Xiota_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_lambda(offset_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_gamma(offset_gammaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_omega(offset_omegaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_det(offset_detSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_iota(offset_iotaSEXP);
     Rcpp::traits::input_parameter< arma::imat >::type ytna(ytnaSEXP);
     Rcpp::traits::input_parameter< arma::ucube >::type yna(ynaSEXP);
     Rcpp::traits::input_parameter< int >::type lk(lkSEXP);
@@ -290,21 +290,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::cube >::type kmyt(kmytSEXP);
     Rcpp::traits::input_parameter< arma::cube >::type lfac_kmyt(lfac_kmytSEXP);
     Rcpp::traits::input_parameter< arma::icube >::type fin(finSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_multmixOpen(y, yt, Xlam, Xgam, Xom, Xp, Xiota, beta, bi, Xlam_offset, Xgam_offset, Xom_offset, Xp_offset, Xiota_offset, ytna, yna, lk, mixture, first, last, first1, M, T, J, R, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip, pi_fun, lfac_k, kmyt, lfac_kmyt, fin));
+    rcpp_result_gen = Rcpp::wrap(nll_multmixOpen(y, yt, X_lambda, X_gamma, X_omega, X_det, X_iota, beta, bi, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, yna, lk, mixture, first, last, first1, M, T, J, R, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip, pi_fun, lfac_k, kmyt, lfac_kmyt, fin));
     return rcpp_result_gen;
 END_RCPP
 }
 // nll_nmixTTD
-double nll_nmixTTD(const arma::vec beta, const arma::vec y, const arma::vec delta, const arma::mat W, const arma::mat V, const arma::umat pinds, const std::string mixture, const std::string tdist, int N, int J, int K, const arma::vec naflag, int threads);
-RcppExport SEXP _unmarked_nll_nmixTTD(SEXP betaSEXP, SEXP ySEXP, SEXP deltaSEXP, SEXP WSEXP, SEXP VSEXP, SEXP pindsSEXP, SEXP mixtureSEXP, SEXP tdistSEXP, SEXP NSEXP, SEXP JSEXP, SEXP KSEXP, SEXP naflagSEXP, SEXP threadsSEXP) {
+double nll_nmixTTD(const arma::vec beta, const arma::vec y, const arma::vec delta, const arma::mat X_state, const arma::mat X_det, const arma::umat pinds, const std::string mixture, const std::string tdist, int N, int J, int K, const arma::vec naflag, int threads);
+RcppExport SEXP _unmarked_nll_nmixTTD(SEXP betaSEXP, SEXP ySEXP, SEXP deltaSEXP, SEXP X_stateSEXP, SEXP X_detSEXP, SEXP pindsSEXP, SEXP mixtureSEXP, SEXP tdistSEXP, SEXP NSEXP, SEXP JSEXP, SEXP KSEXP, SEXP naflagSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type y(ySEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type delta(deltaSEXP);
-    Rcpp::traits::input_parameter< const arma::mat >::type W(WSEXP);
-    Rcpp::traits::input_parameter< const arma::mat >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type X_state(X_stateSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type X_det(X_detSEXP);
     Rcpp::traits::input_parameter< const arma::umat >::type pinds(pindsSEXP);
     Rcpp::traits::input_parameter< const std::string >::type mixture(mixtureSEXP);
     Rcpp::traits::input_parameter< const std::string >::type tdist(tdistSEXP);
@@ -313,7 +313,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type K(KSEXP);
     Rcpp::traits::input_parameter< const arma::vec >::type naflag(naflagSEXP);
     Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_nmixTTD(beta, y, delta, W, V, pinds, mixture, tdist, N, J, K, naflag, threads));
+    rcpp_result_gen = Rcpp::wrap(nll_nmixTTD(beta, y, delta, X_state, X_det, pinds, mixture, tdist, N, J, K, naflag, threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -495,18 +495,18 @@ BEGIN_RCPP
 END_RCPP
 }
 // nll_occuTTD
-double nll_occuTTD(arma::vec beta, arma::vec y, arma::vec delta, arma::mat W, arma::mat V, arma::mat Xgam, arma::mat Xeps, arma::vec pind, arma::vec dind, arma::vec cind, arma::vec eind, std::string lpsi, std::string tdist, int N, int T, int J, arma::vec naflag);
-RcppExport SEXP _unmarked_nll_occuTTD(SEXP betaSEXP, SEXP ySEXP, SEXP deltaSEXP, SEXP WSEXP, SEXP VSEXP, SEXP XgamSEXP, SEXP XepsSEXP, SEXP pindSEXP, SEXP dindSEXP, SEXP cindSEXP, SEXP eindSEXP, SEXP lpsiSEXP, SEXP tdistSEXP, SEXP NSEXP, SEXP TSEXP, SEXP JSEXP, SEXP naflagSEXP) {
+double nll_occuTTD(arma::vec beta, arma::vec y, arma::vec delta, arma::mat X_psi, arma::mat X_det, arma::mat X_col, arma::mat X_ext, arma::vec pind, arma::vec dind, arma::vec cind, arma::vec eind, std::string lpsi, std::string tdist, int N, int T, int J, arma::vec naflag);
+RcppExport SEXP _unmarked_nll_occuTTD(SEXP betaSEXP, SEXP ySEXP, SEXP deltaSEXP, SEXP X_psiSEXP, SEXP X_detSEXP, SEXP X_colSEXP, SEXP X_extSEXP, SEXP pindSEXP, SEXP dindSEXP, SEXP cindSEXP, SEXP eindSEXP, SEXP lpsiSEXP, SEXP tdistSEXP, SEXP NSEXP, SEXP TSEXP, SEXP JSEXP, SEXP naflagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::vec >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type y(ySEXP);
     Rcpp::traits::input_parameter< arma::vec >::type delta(deltaSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type W(WSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type V(VSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xgam(XgamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xeps(XepsSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_psi(X_psiSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_col(X_colSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_ext(X_extSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type pind(pindSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type dind(dindSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type cind(cindSEXP);
@@ -517,7 +517,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type T(TSEXP);
     Rcpp::traits::input_parameter< int >::type J(JSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type naflag(naflagSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_occuTTD(beta, y, delta, W, V, Xgam, Xeps, pind, dind, cind, eind, lpsi, tdist, N, T, J, naflag));
+    rcpp_result_gen = Rcpp::wrap(nll_occuTTD(beta, y, delta, X_psi, X_det, X_col, X_ext, pind, dind, cind, eind, lpsi, tdist, N, T, J, naflag));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -543,28 +543,28 @@ BEGIN_RCPP
 END_RCPP
 }
 // nll_pcountOpen
-double nll_pcountOpen(arma::imat ym, arma::mat Xlam, arma::mat Xgam, arma::mat Xom, arma::mat Xp, arma::mat Xiota, arma::colvec beta_lam, arma::colvec beta_gam, arma::colvec beta_om, arma::colvec beta_p, arma::colvec beta_iota, double log_alpha, arma::colvec Xlam_offset, arma::colvec Xgam_offset, arma::colvec Xom_offset, arma::colvec Xp_offset, arma::colvec Xiota_offset, arma::imat ytna, arma::imat ynam, int lk, std::string mixture, Rcpp::IntegerVector first, Rcpp::IntegerVector last, int M, int J, int T, arma::imat delta, std::string dynamics, std::string fix, std::string go_dims, bool immigration, arma::imat I, arma::imat I1, Rcpp::List Ib, Rcpp::List Ip);
-RcppExport SEXP _unmarked_nll_pcountOpen(SEXP ymSEXP, SEXP XlamSEXP, SEXP XgamSEXP, SEXP XomSEXP, SEXP XpSEXP, SEXP XiotaSEXP, SEXP beta_lamSEXP, SEXP beta_gamSEXP, SEXP beta_omSEXP, SEXP beta_pSEXP, SEXP beta_iotaSEXP, SEXP log_alphaSEXP, SEXP Xlam_offsetSEXP, SEXP Xgam_offsetSEXP, SEXP Xom_offsetSEXP, SEXP Xp_offsetSEXP, SEXP Xiota_offsetSEXP, SEXP ytnaSEXP, SEXP ynamSEXP, SEXP lkSEXP, SEXP mixtureSEXP, SEXP firstSEXP, SEXP lastSEXP, SEXP MSEXP, SEXP JSEXP, SEXP TSEXP, SEXP deltaSEXP, SEXP dynamicsSEXP, SEXP fixSEXP, SEXP go_dimsSEXP, SEXP immigrationSEXP, SEXP ISEXP, SEXP I1SEXP, SEXP IbSEXP, SEXP IpSEXP) {
+double nll_pcountOpen(arma::imat ym, arma::mat X_lambda, arma::mat X_gamma, arma::mat X_omega, arma::mat X_det, arma::mat X_iota, arma::colvec beta_lam, arma::colvec beta_gam, arma::colvec beta_om, arma::colvec beta_p, arma::colvec beta_iota, double log_alpha, arma::colvec offset_lambda, arma::colvec offset_gamma, arma::colvec offset_omega, arma::colvec offset_det, arma::colvec offset_iota, arma::imat ytna, arma::imat ynam, int lk, std::string mixture, Rcpp::IntegerVector first, Rcpp::IntegerVector last, int M, int J, int T, arma::imat delta, std::string dynamics, std::string fix, std::string go_dims, bool immigration, arma::imat I, arma::imat I1, Rcpp::List Ib, Rcpp::List Ip);
+RcppExport SEXP _unmarked_nll_pcountOpen(SEXP ymSEXP, SEXP X_lambdaSEXP, SEXP X_gammaSEXP, SEXP X_omegaSEXP, SEXP X_detSEXP, SEXP X_iotaSEXP, SEXP beta_lamSEXP, SEXP beta_gamSEXP, SEXP beta_omSEXP, SEXP beta_pSEXP, SEXP beta_iotaSEXP, SEXP log_alphaSEXP, SEXP offset_lambdaSEXP, SEXP offset_gammaSEXP, SEXP offset_omegaSEXP, SEXP offset_detSEXP, SEXP offset_iotaSEXP, SEXP ytnaSEXP, SEXP ynamSEXP, SEXP lkSEXP, SEXP mixtureSEXP, SEXP firstSEXP, SEXP lastSEXP, SEXP MSEXP, SEXP JSEXP, SEXP TSEXP, SEXP deltaSEXP, SEXP dynamicsSEXP, SEXP fixSEXP, SEXP go_dimsSEXP, SEXP immigrationSEXP, SEXP ISEXP, SEXP I1SEXP, SEXP IbSEXP, SEXP IpSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::imat >::type ym(ymSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xlam(XlamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xgam(XgamSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xom(XomSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xp(XpSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xiota(XiotaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_lambda(X_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_gamma(X_gammaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_omega(X_omegaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_det(X_detSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_iota(X_iotaSEXP);
     Rcpp::traits::input_parameter< arma::colvec >::type beta_lam(beta_lamSEXP);
     Rcpp::traits::input_parameter< arma::colvec >::type beta_gam(beta_gamSEXP);
     Rcpp::traits::input_parameter< arma::colvec >::type beta_om(beta_omSEXP);
     Rcpp::traits::input_parameter< arma::colvec >::type beta_p(beta_pSEXP);
     Rcpp::traits::input_parameter< arma::colvec >::type beta_iota(beta_iotaSEXP);
     Rcpp::traits::input_parameter< double >::type log_alpha(log_alphaSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xlam_offset(Xlam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xgam_offset(Xgam_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xom_offset(Xom_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xp_offset(Xp_offsetSEXP);
-    Rcpp::traits::input_parameter< arma::colvec >::type Xiota_offset(Xiota_offsetSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_lambda(offset_lambdaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_gamma(offset_gammaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_omega(offset_omegaSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_det(offset_detSEXP);
+    Rcpp::traits::input_parameter< arma::colvec >::type offset_iota(offset_iotaSEXP);
     Rcpp::traits::input_parameter< arma::imat >::type ytna(ytnaSEXP);
     Rcpp::traits::input_parameter< arma::imat >::type ynam(ynamSEXP);
     Rcpp::traits::input_parameter< int >::type lk(lkSEXP);
@@ -583,13 +583,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::imat >::type I1(I1SEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type Ib(IbSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type Ip(IpSEXP);
-    rcpp_result_gen = Rcpp::wrap(nll_pcountOpen(ym, Xlam, Xgam, Xom, Xp, Xiota, beta_lam, beta_gam, beta_om, beta_p, beta_iota, log_alpha, Xlam_offset, Xgam_offset, Xom_offset, Xp_offset, Xiota_offset, ytna, ynam, lk, mixture, first, last, M, J, T, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip));
+    rcpp_result_gen = Rcpp::wrap(nll_pcountOpen(ym, X_lambda, X_gamma, X_omega, X_det, X_iota, beta_lam, beta_gam, beta_om, beta_p, beta_iota, log_alpha, offset_lambda, offset_gamma, offset_omega, offset_det, offset_iota, ytna, ynam, lk, mixture, first, last, M, J, T, delta, dynamics, fix, go_dims, immigration, I, I1, Ib, Ip));
     return rcpp_result_gen;
 END_RCPP
 }
-
-RcppExport SEXP getDetVecs(SEXP, SEXP, SEXP, SEXP, SEXP);
-RcppExport SEXP getSingleDetVec(SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"_unmarked_get_lik_trans", (DL_FUNC) &_unmarked_get_lik_trans, 2},
@@ -614,8 +611,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_unmarked_nll_occuTTD", (DL_FUNC) &_unmarked_nll_occuTTD, 17},
     {"_unmarked_nll_pcount", (DL_FUNC) &_unmarked_nll_pcount, 11},
     {"_unmarked_nll_pcountOpen", (DL_FUNC) &_unmarked_nll_pcountOpen, 35},
-    {"getDetVecs",      (DL_FUNC) &getDetVecs,      5},
-    {"getSingleDetVec", (DL_FUNC) &getSingleDetVec, 3},
     {NULL, NULL, 0}
 };
 

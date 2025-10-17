@@ -163,3 +163,14 @@ test_that("goccu handles missing values", {
   pb <- expect_warning(parboot(mod_na, nsim=2))
   expect_is(pb, "parboot")
 })
+
+test_that("larksparrow example from RMark", {
+  # good test of missing primary periods
+  umf_lasp <- readRDS("data/umf_lasp.Rds")
+  fit1 <- goccu(psiformula = ~1, phiformula = ~1, pformula = ~1, umf_lasp)
+  expect_equal(fit1@AIC, 331.2776, tol=1e-4)
+  fit2 <- goccu(psiformula = ~1, phiformula = ~cw, pformula = ~td, umf_lasp)
+  expect_equal(fit2@AIC, 323.4963, tol=1e-4)
+  fit3 <- goccu(psiformula = ~ceap, phiformula = ~cw, pformula = ~td, umf_lasp)
+  expect_equal(fit3@AIC, 323.2437, tol=1e-4)
+})

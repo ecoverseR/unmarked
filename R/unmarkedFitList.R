@@ -1,45 +1,18 @@
 #Get y (corrected for missing values) based on data and formulas
 #Approach for some fit functions is different, so this is now a method
-setGeneric("fl_getY", function(fit, ...) standardGeneric("fl_getY"))
-
 setMethod("fl_getY", "unmarkedFit", function(fit, ...){
-  getDesign(getData(fit), fit@formula)$y
+  getDesign(getData(fit), fit@formlist)$y
 })
 
 setMethod("fl_getY", "unmarkedFitOccuMulti", function(fit, ...){
   maxOrder <- fit@call$maxOrder
   if(is.null(maxOrder)) maxOrder <- length(fit@data@ylist)
-  getDesign(getData(fit), fit@detformulas, fit@stateformulas, maxOrder)$y
+  getDesign(getData(fit), fit@formlist, maxOrder)$y
 })
 
 setMethod("fl_getY", "unmarkedFitOccuMS", function(fit, ...){
-  getDesign(getData(fit), fit@psiformulas, fit@phiformulas,
-            fit@detformulas, fit@parameterization)$y
+  getDesign(getData(fit), fit@formlist, fit@parameterization)$y
 })
-
-setMethod("fl_getY", "unmarkedFitOccuFP", function(fit, ...){
-  getDesign(getData(fit), fit@detformula, fit@FPformula,
-            fit@Bformula, fit@stateformula)$y
-})
-
-setClass("unmarkedFitList",
-    representation(fits = "list"),
-    validity = function(object) {
-        fl <- object@fits
-        umf1 <- getData(fl[[1]])
-        y1 <- fl_getY(fl[[1]])
-        dataTest <- sapply(fl, function(x) isTRUE(all.equal(umf1, getData(x))))
-        yTest <- sapply(fl, function(x) isTRUE(all.equal(y1, fl_getY(x))))
-        if(!all(dataTest)) {
-            stop("Data are not the same among models. Make sure you use the same unmarkedFrame object for all models.")
-            }
-        else if(!all(yTest)) {
-            stop("Data are not the same among models due to missing covariate values. Consider removing NAs before analysis.")
-            }
-        TRUE
-        }
-    )
-
 
 # constructor of unmarkedFitList objects
 fitList <- function(..., fits, autoNames=c("object","formula")) {
@@ -213,23 +186,6 @@ nagR2 <- function(fit, nullfit)
     return(r2 / r2max)
 }
 
-
-
-setGeneric("modSel",
-        def = function(object, ...) {
-            standardGeneric("modSel")
-            }
-        )
-
-setClass("unmarkedModSel",
-    representation(
-        Full = "data.frame",
-        Names = "matrix"
-        )
-    )
-
-
-
 # Model selection results from an unmarkedFitList
 setMethod("modSel", "unmarkedFitList",
 	function(object, nullmod=NULL)
@@ -258,9 +214,7 @@ setMethod("modSel", "unmarkedFitList",
     colnames(out) <- cNames
     out$model <- names(fits)
     out$formula <- sapply(fits, function(x) {
-          f <- as.character(x@formula)
-          f <- paste(f[2], "~", f[3])
-          f
+          paste(unlist(x@formlist), collapse = " ")
         })
     for(i in 1:length(eNames)) {
         out[,eNames[i]] <- sapply(estList, function(x) x[eNames[i]])

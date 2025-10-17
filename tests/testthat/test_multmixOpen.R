@@ -69,9 +69,10 @@ test_that("subsetting unmarkedFrameMMO works", {
   expect_equivalent(umf_sub[1,], umf[2,])
   expect_equivalent(umf_sub[2,], umf[2,])
   expect_equivalent(umf_sub[3,], umf[4,])
-  set.seed(123)
-  keep <- runif(numSites(umf), 0, 1) > 0.5
-  expect_error(umf_sub <- umf[keep,]) # this should work
+  
+  keep <- c(TRUE, FALSE, TRUE, rep(FALSE, 97))
+  umf_sub <- umf[keep,] # this should work
+  expect_equal(umf_sub, umf[c(1,3),])
 })
 
 test_that("multmixOpen can fit removal models",{

@@ -18,7 +18,9 @@ occuMulti <- function(detformulas, stateformulas,  data, maxOrder,
     }
     detformulas <- rep('~1',length(data@ylist))
   }
-  all_forms <- c(detformulas, stateformulas)
+
+  formulas <- list(det = detformulas, state = stateformulas)
+  all_forms <- unlist(formulas)
   all_forms <- all_forms[!all_forms %in% c("0","~0")]
   check_no_support(lapply(all_forms, as.formula))
 
@@ -26,7 +28,7 @@ occuMulti <- function(detformulas, stateformulas,  data, maxOrder,
   if(penalty < 0) stop("Penalty term must be >= 0")
 
   #Get design matrices and indices
-  designMats <- getDesign(data, detformulas, stateformulas, maxOrder, warn=!silent)
+  designMats <- getDesign(data, formulas, maxOrder, warn=!silent)
 
   #Don't think there is a better way...
   N <- designMats$N; S <- designMats$S; J <- designMats$J; M <- designMats$M
@@ -133,8 +135,8 @@ occuMulti <- function(detformulas, stateformulas,  data, maxOrder,
   cl$maxOrder <- maxOrder
 
   umfit <- new("unmarkedFitOccuMulti", fitType = "occuMulti", call = cl,
-                detformulas = detformulas, stateformulas = stateformulas,
-                formula = ~1, data = data,
+                formlist = formulas,
+                data = data,
                 #sitesRemoved = designMats$removed.sites,
                 estimates = estimateList, AIC = fmAIC, opt = fm,
                 negLogLike = fm$value, nllFun = nll_R)
@@ -163,7 +165,7 @@ occuMultiLogLik <- function(fit, data){
   maxOrder <- fit@call$maxOrder
   if(is.null(maxOrder)) maxOrder <- length(fit@data@ylist)
 
-  dm <- getDesign(data, fit@detformulas, fit@stateformulas,
+  dm <- getDesign(data, fit@formlist,
                   maxOrder=maxOrder, warn=FALSE)
 
   dmF <- Matrix::Matrix(dm$dmF, sparse=TRUE)
@@ -179,9 +181,6 @@ occuMultiLogLik <- function(fit, data){
 
 }
 
-setGeneric("optimizePenalty",
-           function(object, penalties=c(0,2^seq(-4,4)), k = 5, boot = 30, ...)
-           standardGeneric("optimizePenalty"))
 
 setMethod("optimizePenalty", "unmarkedFitOccuMulti",
           function(object, penalties=c(0,2^seq(-4,4)), k = 5, boot = 30, ...){
@@ -201,3 +200,27 @@ setMethod("optimizePenalty", "unmarkedFitOccuMulti",
   object@call$penalty <- max_cvp
   update(object, data=object@data, boot=boot)
 })
+
+
+#Converts names to indices for occuMulti() and methods
+name_to_ind <- function(x,name_list){
+
+  if(is.null(x)) return(x)
+
+  if(is.numeric(x)){
+    if(any(x>length(name_list))){
+      stop("Supplied species index is invalid")
+    }
+    return(x)
+  }
+
+  absent_adjust <- ifelse(grepl('^-',x),-1,1)
+  clean <- sub('-','',x)
+  if(!all(clean %in% name_list)){
+    stop("Supplied species name not found")
+  }
+  out <- match(clean,name_list)
+
+
+  out * absent_adjust
+}

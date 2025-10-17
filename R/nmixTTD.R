@@ -19,16 +19,13 @@ nmixTTD <- function(stateformula=~1, detformula=~1, data, K=100,
   mixture <- match.arg(mixture)
   ttdDist <- match.arg(ttdDist)
 
-  formula <- list(stateformula, ~1, ~1, detformula)
-  check_no_support(formula)
-  formula <- as.formula(paste(unlist(formula),collapse=" "))
+  formulas <- list(state = stateformula, col = ~1, ext = ~1, det = detformula)
+  check_no_support(formulas)
 
   #Process input data----------------------------------------------------------
-  designMats <- getDesign(data, formula)
-  #V = detection; W = abundance
-  V <- designMats$V; W <- designMats$W
-  y <- designMats$y
-  removed <- designMats$removed.sites
+  dm <- getDesign(data, formulas)
+  y <- dm$y
+  removed <- dm$removed.sites
 
   N <- nrow(y)
   R <- ncol(y)
@@ -44,8 +41,8 @@ nmixTTD <- function(stateformula=~1, detformula=~1, data, K=100,
   delta <- as.numeric(yvec<ymax)
 
   #Organize parameters---------------------------------------------------------
-  detParms <- colnames(V); nDP <- ncol(V)
-  abunParms <- colnames(W); nAP <- ncol(W)
+  detParms <- colnames(dm$X_det); nDP <- ncol(dm$X_det)
+  abunParms <- colnames(dm$X_state); nAP <- ncol(dm$X_state)
 
   pinds <- matrix(NA, nrow=4, ncol=2)
   pinds[1,] <- c(1, nAP)
@@ -63,8 +60,8 @@ nmixTTD <- function(stateformula=~1, detformula=~1, data, K=100,
   nll_R <- function(params){
 
     #Get abundance and detection parameters
-    lamN <- exp(W %*% params[pinds[1,]])
-    lamP <- exp(V %*% params[pinds[2,]])
+    lamN <- exp(dm$X_state %*% params[pinds[1,]])
+    lamP <- exp(dm$X_det %*% params[pinds[2,]])
 
     if(mixture == "P"){
       pK <- sapply(0:K, function(k) dpois(k, lamN))
@@ -115,7 +112,7 @@ nmixTTD <- function(stateformula=~1, detformula=~1, data, K=100,
   }
 
   nll_C <- function(params){
-    nll_nmixTTD(params, yvec, delta, W, V, pinds - 1, mixture, ttdDist,
+    nll_nmixTTD(params, yvec, delta, dm$X_state, dm$X_det, pinds - 1, mixture, ttdDist,
                 N, J, K, naflag, threads)
   }
 
@@ -173,9 +170,7 @@ nmixTTD <- function(stateformula=~1, detformula=~1, data, K=100,
 
   umfit <- new("unmarkedFitNmixTTD", fitType = "nmixTTD",
                call = match.call(),
-               formula = formula,
-               stateformula = stateformula,
-               detformula = detformula,
+               formlist = formulas,
                K = K,
                data = data, sitesRemoved = removed,
                estimates = estimateList,

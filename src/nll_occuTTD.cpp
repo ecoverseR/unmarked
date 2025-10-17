@@ -32,7 +32,7 @@ using namespace arma;
 
 // [[Rcpp::export]]
 double nll_occuTTD( arma::vec beta, arma::vec y, arma::vec delta,
-    arma::mat W, arma::mat V, arma::mat Xgam, arma::mat Xeps,
+    arma::mat X_psi, arma::mat X_det, arma::mat X_col, arma::mat X_ext,
     arma::vec pind, arma::vec dind, arma::vec cind, arma::vec eind,
     std::string lpsi, std::string tdist,
     int N, int T, int J,
@@ -41,7 +41,7 @@ double nll_occuTTD( arma::vec beta, arma::vec y, arma::vec delta,
   int ys = y.size();
 
   //Get psi values
-  colvec raw_psi = W * beta.subvec(pind(0), pind(1));
+  colvec raw_psi = X_psi * beta.subvec(pind(0), pind(1));
   if(lpsi == "cloglog"){
     raw_psi = 1 - exp(-exp(raw_psi));
   } else {
@@ -50,7 +50,7 @@ double nll_occuTTD( arma::vec beta, arma::vec y, arma::vec delta,
   const mat psi = join_rows(1-raw_psi, raw_psi);
 
   //Get lambda values
-  const vec lam = exp(V * beta.subvec(dind(0), dind(1)));
+  const vec lam = exp(X_det * beta.subvec(dind(0), dind(1)));
 
   vec e_lamt(ys);
   if(tdist == "weibull"){
@@ -68,8 +68,8 @@ double nll_occuTTD( arma::vec beta, arma::vec y, arma::vec delta,
 
   mat phi_raw(N*(T-1), 4);
   if(T > 1){
-    colvec col = Xgam * beta.subvec(cind(0), cind(1));
-    colvec ext = Xeps * beta.subvec(eind(0), eind(1));
+    colvec col = X_col * beta.subvec(cind(0), cind(1));
+    colvec ext = X_ext * beta.subvec(eind(0), eind(1));
     ext = 1 / (1 + exp(-ext));
     col = 1 / (1 + exp(-col));
     phi_raw.col(0) = 1-col;

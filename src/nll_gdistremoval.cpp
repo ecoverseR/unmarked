@@ -15,41 +15,41 @@ using namespace arma;
 // [[Rcpp::export]]
 double nll_gdistremoval(arma::vec beta, arma::uvec n_param, arma::vec yDistance,
     arma::vec yRemoval, arma::mat ysum, int mixture, std::string keyfun,
-    arma::mat Xlam, arma::vec A, arma::mat Xphi, arma::mat Xrem,
-    arma::mat Xdist, arma::vec db, arma::mat a, arma::mat u, arma::vec w,
+    arma::mat X_lambda, arma::vec A, arma::mat X_phi, arma::mat X_rem,
+    arma::mat X_dist, arma::vec db, arma::mat a, arma::mat u, arma::vec w,
     arma::uvec pl, int K, arma::uvec Kmin, int threads){
 
   #ifdef _OPENMP
     omp_set_num_threads(threads);
   #endif
 
-  int M = Xlam.n_rows;
-  int T = Xphi.n_rows / M;
+  int M = X_lambda.n_rows;
+  int T = X_phi.n_rows / M;
   int Rdist = yDistance.size() / M;
   unsigned Jdist = Rdist / T;
   int Rrem = yRemoval.size() / M;
   unsigned Jrem = Rrem / T;
 
   //Abundance
-  const vec lambda = exp(Xlam * beta_sub(beta, n_param, 0)) % A;
+  const vec lambda = exp(X_lambda * beta_sub(beta, n_param, 0)) % A;
   double log_alpha = beta_sub(beta, n_param, 1)(0); //length 1 vector
 
   //Availability
   vec phi = ones(M*T);
   if(T > 1){
-    phi = inv_logit(Xphi * beta_sub(beta, n_param, 2));
+    phi = inv_logit(X_phi * beta_sub(beta, n_param, 2));
   }
 
   //Distance sampling detection
   vec dist_param(M*T);
   if(keyfun != "uniform"){
-    dist_param = exp(Xdist * beta_sub(beta, n_param, 3));
+    dist_param = exp(X_dist * beta_sub(beta, n_param, 3));
   }
   double scale = exp(beta_sub(beta, n_param, 4)(0));
 
   //Removal sampling detection
   vec remP(M * T * Jrem);
-  remP = inv_logit(Xrem * beta_sub(beta, n_param, 5));
+  remP = inv_logit(X_rem * beta_sub(beta, n_param, 5));
 
   double loglik = 0.0;
 

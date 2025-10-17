@@ -44,31 +44,17 @@ distsampOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
 
   fix <- match.arg(fix)
 
-  formlist <- mget(c("lambdaformula", "gammaformula", "omegaformula",
-                   "pformula", "iotaformula"))
-  check_no_support(formlist)
-  formula <- as.formula(paste(unlist(formlist), collapse=" "))
+  formulas <- list(lambda = lambdaformula, gamma = gammaformula,
+                   omega = omegaformula, det = pformula, iota = iotaformula)
+  check_no_support(formulas)
 
-  D <- getDesign(data, formula)
+  D <- getDesign(data, formulas)
   y <- D$y
 
-  Xlam <- D$Xlam
-  Xgam <- D$Xgam
-  Xom <- D$Xom
-  Xsig <- D$Xp
-  Xiota<- D$Xiota
-
-  delta <- D$delta; go.dims <- D$go.dims
-  deltamax <- max(delta, na.rm=TRUE)
+  deltamax <- max(D$delta, na.rm=TRUE)
   M <- nrow(y)
   T <- data@numPrimary
   J <- ncol(getY(data)) / T
-
-  Xlam.offset <- D$Xlam.offset
-  Xgam.offset <- D$Xgam.offset
-  Xom.offset <- D$Xom.offset
-  Xsig.offset <- D$Xp.offset
-  Xiota.offset<- D$Xiota.offset
 
   y <- array(y, c(M, J, T))
   yt <- apply(y, c(1,3), function(x) {
@@ -124,21 +110,21 @@ distsampOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
     A <- rep(1, M)
   }
 
-  lamParms <- colnames(Xlam)
-  gamParms <- colnames(Xgam)
-  omParms <- colnames(Xom)
-  nAP <- ncol(Xlam)
-  nGP <- ncol(Xgam)
-  nOP <- ncol(Xom)
+  lamParms <- colnames(D$X_lambda)
+  gamParms <- colnames(D$X_gamma)
+  omParms <- colnames(D$X_omega)
+  nAP <- ncol(D$X_lambda)
+  nGP <- ncol(D$X_gamma)
+  nOP <- ncol(D$X_omega)
 
   #No parameters if uniform key function
-  nDP <- ifelse(keyfun == "uniform", 0, ncol(Xsig))
+  nDP <- ifelse(keyfun == "uniform", 0, ncol(D$X_det))
   detParms <- character(0)
-  if(keyfun != "uniform") detParms <- colnames(Xsig)
+  if(keyfun != "uniform") detParms <- colnames(D$X_det)
 
-  nIP <- ifelse(immigration, ncol(Xiota), 0)
+  nIP <- ifelse(immigration, ncol(D$X_iota), 0)
   iotaParms <- character(0)
-  if(immigration) iotaParms <- colnames(Xiota)
+  if(immigration) iotaParms <- colnames(D$X_iota)
 
   if(identical(fix, "gamma")) {
     if(!identical(dynamics, "constant"))
@@ -215,12 +201,12 @@ distsampOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
   nll <- function(parms) {
     nll_distsampOpen(
           yperm, yt,
-          Xlam, Xgam, Xom, Xsig, Xiota,
+          D$X_lambda, D$X_gamma, D$X_omega, D$X_det, D$X_iota,
           parms, beta_ind - 1,
-          Xlam.offset, Xgam.offset, Xom.offset, Xsig.offset, Xiota.offset,
+          D$offset_lambda, D$offset_gamma, D$offset_omega, D$offset_det, D$offset_iota,
           ytna,
           lk, mixture, first - 1, last - 1, first1 - 1, M, T,
-          delta, dynamics, survey, fix, go.dims, immigration,
+          D$delta, dynamics, survey, fix, D$go.dims, immigration,
           I, I1, lik_trans$Ib, lik_trans$Ip,
           a, u, w, db,
           keyfun, lfac.k, kmyt, lfac.kmyt, fin, A
@@ -320,7 +306,7 @@ distsampOpen <- function(lambdaformula, gammaformula, omegaformula, pformula,
   }
 
   umfit <- new("unmarkedFitDSO", fitType = "distsampOpen",
-      call = match.call(), formula = formula, formlist = formlist, data = data,
+      call = match.call(), formlist = formulas, data = data,
       sitesRemoved=D$removed.sites, estimates = estimateList, AIC = fmAIC,
       opt = fm, negLogLike = fm$value, nllFun = nll, K = K, mixture = mixture,
       dynamics = dynamics, fix = fix, immigration=immigration, keyfun=keyfun,

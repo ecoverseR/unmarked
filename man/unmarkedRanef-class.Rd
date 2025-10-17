@@ -2,8 +2,6 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{unmarkedRanef-class}
-\alias{bup}
-\alias{bup,unmarkedRanef-method}
 \alias{confint,unmarkedRanef-method}
 \alias{plot,unmarkedRanef,missing-method}
 \alias{show,unmarkedRanef-method}
@@ -28,10 +26,6 @@ Objects can be created by calls of the form \code{\link{ranef}}.
 
 \section{Methods}{
   \describe{
-    \item{bup}{\code{signature(object = "unmarkedRanef")}: Extract the
-    Best Unbiased Predictors (BUPs) of the latent variables (abundance
-  or occurrence state). Either the posterior mean or median can be
-  requested using the \code{stat} argument.}
     \item{confint}{\code{signature(object = "unmarkedRanef")}: Compute
       confidence intervals.}
     \item{plot}{\code{signature(x = "unmarkedRanef", y = "missing")}:
@@ -67,7 +61,7 @@ Objects can be created by calls of the form \code{\link{ranef}}.
 
 
 \seealso{
-\code{\link{ranef}}
+\code{\link{ranef}, \link{bup}}
 }
 \examples{
 showClass("unmarkedRanef")

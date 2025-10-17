@@ -1,298 +1,248 @@
 colext <- function(psiformula = ~ 1, gammaformula = ~ 1,
-                   epsilonformula = ~ 1, pformula = ~ 1,
-                   data, starts, method = "BFGS", se = TRUE, ...)
-{
+                    epsilonformula = ~ 1, pformula = ~ 1,
+                    data, starts, method = "BFGS", se = TRUE, ...){
 
-    K <- 1
+  ## truncate to 1
+  data@y <- truncateToBinary(data@y)
+ 
+  formulas <- list(psi = psiformula, col = gammaformula, ext = epsilonformula,
+                   det = pformula)
+  check_no_support(formulas)
+  dm <- getDesign(data, formulas)
 
-    ## truncate at K
-    data@y[data@y > K] <- K
+  X_col <- dm$X_col; X_ext <- dm$X_ext
+  y <- dm$y
+  M <- nrow(y)
+  T <- data@numPrimary
+  J <- ncol(y) / T
+  psiParms <- colnames(dm$X_psi)
+  colParms <- colnames(X_col)
+  extParms <- colnames(X_ext)
+  detParms <- colnames(dm$X_det)
 
-    y <- getY(data)
-    J <- numY(data) / data@numPrimary
+  ## remove final year from transition prob design matrices
+  X_col <- as.matrix(X_col[-seq(T,M*T,by=T),])
+  X_ext <- as.matrix(X_ext[-seq(T,M*T,by=T),])
 
-    M <- nrow(y)
-    nY <- ncol(y)/J
-    n.det <- sum(apply(y > 0, 1, any, na.rm = TRUE))
-
-    fc <- match.call()
-    fc[[1]] <- as.name("colext.fit")
-    formula <- list(psiformula = psiformula, gammaformula = gammaformula,
-                    epsilonformula = epsilonformula, pformula = pformula)
-    check_no_support(formula)
-    fc$formula <- as.name("formula")
-    fc$bootstrap.se <- fc$covdata.site <- fc$covdata.obs <- fc$data <-
-        fc$B <-  fc$psiformula <- fc$gammaformula <- fc$epsilonformula <-
-            fc$pformula <- NULL
-    fc$data <- as.name("data")
-    fc$J <- as.name("J")
-    fc$method <- as.name("method")
-    #  fc$control <- as.name("control")
-    fc$getHessian <- as.name("se")
-    fc$se <- NULL
-    if(missing(starts)) {
-        fc$starts <- NULL
-    } else {
-        fc$starts <- eval(starts)
+  # Determine which periods were sampled at each site
+  site_sampled <- matrix(1, M, T)
+  Trep <- rep(1:T, each = J)
+  for (t in 1:T){
+    ind <- which(Trep == t)
+    for (i in 1:M){
+      if(all(is.na(y[i, ind]))) site_sampled[i,t] <- 0
     }
+  }
 
-    extras <- match.call(expand.dots = FALSE)$...
-    if (length(extras) > 0) {
-        existing <- !is.na(match(names(extras), names(fc)))
-        for (a in names(extras)[existing]) fc[[a]] <- extras[[a]]
-        if (any(!existing)) {
-            fc <- as.call(c(as.list(fc), extras[!existing]))
-        }
+  # Determine site-periods with no detections
+  no_detects <- matrix(1, M, T)
+  for (i in 1:M){
+    for (t in 1:T){
+      ind <- which(Trep == t)
+      ysub <- y[i, ind]
+      if(all(is.na(ysub))) next
+      ysub <- na.omit(ysub)
+      if(all(ysub == 0)){
+        no_detects[i,t] <- 1
+      } else {
+        no_detects[i,t] <- 0
+      }
     }
+  }
 
-    fm <- eval(fc)
+  # Parameter indices
+  pind_mat <- matrix(0, 4, 2)
+  pind_mat[1,] <- c(1, length(psiParms))
+  pind_mat[2,] <- max(pind_mat[1,]) + c(1, length(colParms))
+  pind_mat[3,] <- max(pind_mat[2,]) + c(1, length(extParms))
+  pind_mat[4,] <- max(pind_mat[3,]) + c(1, length(detParms))
+  
+  tmb_dat <- list(y = as.vector(t(y)), X_psi = dm$X_psi, X_col = X_col, 
+                  X_ext = X_ext, X_det = dm$X_det,
+                  M = M, T = T, J = J, 
+                  site_sampled = site_sampled, nd = no_detects)
 
-    fm$n.det <- n.det
-    opt <- fm$opt
-    nP <- fm$nP; M <- fm$M; nDP <- fm$nDP; nGP <- fm$nGP
-    nEP <- fm$nEP; nSP <- fm$nSP
+  tmb_pars <- list(beta_psi = rep(0, length(psiParms)), 
+                   beta_col = rep(0, length(colParms)),
+                   beta_ext = rep(0, length(extParms)), 
+                   beta_det = rep(0, length(detParms)))
 
-    covMat <- invertHessian(opt, nP, se)
-    ests <- opt$par
-    names(ests) <- fm$mle$names
-    fmAIC <- 2 * opt$value + 2 * nP # + 2*nP*(nP + 1)/(M - nP - 1)
+  tmb_obj <- TMB::MakeADFun(data = c(model = "tmb_colext", tmb_dat), 
+                            parameters = tmb_pars,
+                            DLL = "unmarked_TMBExports", silent=TRUE)
+  
+  opt <- optim(unlist(tmb_pars), fn=tmb_obj$fn, gr=tmb_obj$gr, 
+               method=method, hessian = se, ...)
 
-    psiParams <- ests[1:nSP]
-    colParams <- ests[(nSP + 1) : (nSP + nGP)]
-    extParams <- ests[(nSP + nGP + 1) : (nSP + nGP + nEP)]
-    detParams <- ests[(nSP + nGP + nEP + 1) : nP]
+  fmAIC <- 2 * opt$value + 2 * length(unlist(tmb_pars))
 
-    psi <- unmarkedEstimate(name = "Initial", short.name = "psi",
-                            estimates = psiParams,
-                            covMat = as.matrix(covMat[1:nSP,1:nSP]),
-                            invlink = "logistic",
-                            invlinkGrad = "logistic.grad")
+  sdr <- TMB::sdreport(tmb_obj)
 
-    col <- unmarkedEstimate(name = "Colonization", short.name = "col",
-                            estimates = colParams,
-                            covMat = as.matrix(covMat[(nSP + 1) :
-                                (nSP + nGP), (nSP + 1) : (nSP + nGP)]),
-                            invlink = "logistic",
-                            invlinkGrad = "logistic.grad")
+  psi_coef <- get_coef_info(sdr, "psi", psiParms, pind_mat[1,1]:pind_mat[1,2])
+  col_coef <- get_coef_info(sdr, "col", colParms, pind_mat[2,1]:pind_mat[2,2])
+  ext_coef <- get_coef_info(sdr, "ext", extParms, pind_mat[3,1]:pind_mat[3,2])
+  det_coef <- get_coef_info(sdr, "det", detParms, pind_mat[4,1]:pind_mat[4,2])
+  
+  psi <- unmarkedEstimate(name = "Initial", short.name = "psi",
+                          estimates = psi_coef$ests,
+                          covMat = psi_coef$cov,
+                          invlink = "logistic",
+                          invlinkGrad = "logistic.grad")
 
-    ext <- unmarkedEstimate(name = "Extinction", short.name = "ext",
-                            estimates = extParams,
-                            covMat = as.matrix(covMat[(nSP + nGP + 1) :
-                                (nSP + nGP + nEP),
-                                (nSP + nGP + 1) :
-                                (nSP + nGP + nEP)]),
-                            invlink = "logistic",
-                            invlinkGrad = "logistic.grad")
+  col <- unmarkedEstimate(name = "Colonization", short.name = "col",
+                          estimates = col_coef$ests,
+                          covMat = col_coef$cov,
+                          invlink = "logistic",
+                          invlinkGrad = "logistic.grad")
 
-    det <- unmarkedEstimate(name = "Detection", short.name = "p",
-                            estimates = detParams,
-                            covMat = as.matrix(covMat[(nSP+nGP+nEP+1):nP,
-                                                      (nSP+nGP+nEP+1):nP]),
-                            invlink = "logistic",
-                            invlinkGrad = "logistic.grad")
+  ext <- unmarkedEstimate(name = "Extinction", short.name = "ext",
+                          estimates = ext_coef$ests,
+                          covMat = ext_coef$cov,
+                          invlink = "logistic",
+                          invlinkGrad = "logistic.grad")
 
-    estimateList <- unmarkedEstimateList(list(psi = psi, col = col,
-                                              ext = ext, det=det))
+  det <- unmarkedEstimate(name = "Detection", short.name = "p",
+                          estimates = det_coef$ests,
+                          covMat = det_coef$cov,
+                          invlink = "logistic",
+                          invlinkGrad = "logistic.grad")
 
-    umfit <- new("unmarkedFitColExt", fitType = "colext",
-                 call = match.call(),
-                 formula = as.formula(paste(unlist(formula),collapse=" ")),
-                 psiformula = psiformula,
-                 gamformula = gammaformula,
-                 epsformula = epsilonformula,
-                 detformula = pformula,
-                 data = data, sitesRemoved = fm$designMats$removed.sites,
-                 estimates = estimateList,
-                 AIC = fmAIC, opt = opt, negLogLike = opt$value,
-                 nllFun = fm$nll,
-                 projected = fm$projected,
-                 projected.mean = fm$projected.mean,
-                 smoothed = fm$smoothed, smoothed.mean = fm$smoothed.mean)
+  estimateList <- unmarkedEstimateList(list(psi = psi, col = col,
+                                            ext = ext, det = det))
+  
+  psis <- plogis(dm$X_psi %*% psi_coef$ests)
 
-    return(umfit)
+  # Compute projected estimates
+  phis <- array(NA,c(2,2,T-1,M))
+  phis[,1,,] <- plogis(X_col %x% c(-1,1) %*% col_coef$ests)
+  phis[,2,,] <- plogis(X_ext %x% c(-1,1) %*% -ext_coef$ests)
+
+  projected <- array(NA, c(2, T, M))
+  projected[1,1,] <- 1 - psis
+  projected[2,1,] <- psis
+  for(i in 1:M) {
+    for(t in 2:T) {
+      projected[,t,i] <- phis[,,t-1,i] %*% projected[,t-1,i]
+    }
+  }
+  projected.mean <- apply(projected, 1:2, mean)
+  rownames(projected.mean) <- c("unoccupied","occupied")
+  colnames(projected.mean) <- 1:T
+
+  # Compute smoothed estimates
+  smoothed <- calculate_smooth(y = y, psi = psis,
+                               col = plogis(X_col %*% col_coef$ests),
+                               ext = plogis(X_ext %*% ext_coef$ests),
+                               p = plogis(dm$X_det %*% det_coef$ests),
+                               M = M, T = T, J = J)
+  smoothed.mean <- apply(smoothed, 1:2, mean)
+  rownames(smoothed.mean) <- c("unoccupied","occupied")
+  colnames(smoothed.mean) <- 1:T
+
+  umfit <- new("unmarkedFitColExt", fitType = "colext",
+                call = match.call(),
+                formlist = formulas,
+                data = data, sitesRemoved = dm$removed.sites,
+                estimates = estimateList,
+                AIC = fmAIC, opt = opt, negLogLike = opt$value,
+                nllFun = tmb_obj$fn,
+                projected = projected,
+                projected.mean = projected.mean,
+                smoothed = smoothed, smoothed.mean = smoothed.mean)
+
+  return(umfit)
 }
 
+# Based on Weir, Fiske, Royle 2009 "TRENDS IN ANURAN OCCUPANCY"
+# Appendix 1
+calculate_smooth <- function(y, psi, col, ext, p, M, T, J){
 
-colext.fit <- function(formula, data, J,
-                       starts=NULL, method, getHessian = TRUE,
-                       wts, ...)
-{
-    K <- 1
+  smoothed <- array(NA, c(2, T, M))
 
-    designMats <- getDesign(data,
-        formula = as.formula(paste(unlist(formula), collapse=" ")))
-    V.itjk <- designMats$V
-    X.it.gam <- designMats$X.gam
-    X.it.eps <- designMats$X.eps
-    W.i <- designMats$W
+  # Turn parameters into matrices
+  p <- matrix(p, M, T*J, byrow=TRUE)
+  col <- matrix(col, M, (T-1), byrow=TRUE)
+  ext <- matrix(ext, M, (T-1), byrow = TRUE)
 
-    detParms <- colnames(V.itjk)
-    gamParms <- colnames(X.it.gam)
-    epsParms <- colnames(X.it.eps)
-    psiParms <- colnames(W.i)
+  tind <- rep(1:T, each = J)
 
-    y <- designMats$y
-    M <- nrow(y)
-    nY <- ncol(y)/J
-    if(missing(wts)) wts <- rep(1, M)
+  for (i in 1:M){
 
-    #  stateformula <- as.formula(paste("~",formula[3],sep=""))
+    # Forward pass
+    alpha1 <- matrix(NA, M, T)
+    alpha0 <- matrix(NA, M, T)
 
-    ## remove final year from X.it
-    X.it.gam <- as.matrix(X.it.gam[-seq(nY,M*nY,by=nY),])
-    X.it.eps <- as.matrix(X.it.eps[-seq(nY,M*nY,by=nY),])
+    # Initialize at t=1
+    ysub <- y[i, tind == 1]
+    #no_detects <- all(na.omit(ysub) == 0) * 1 
+    psub <- p[i, tind == 1]
 
-    nDP <- length(detParms)
-    nGP <- length(gamParms)
-    nEP <- length(epsParms)
-    nSP <- length(psiParms)
-    nDMP <-  1
+    if(all(is.na(ysub))){
+      # Don't include detection likelihood in calculation if no data
+      alpha1[i,1] <- psi[i]
+      alpha0[i,1] <- (1-psi[i])
+    } else {
+      # Case when z = 1
+      cp <- prod(na.omit(dbinom(ysub, 1, psub)))
+      alpha1[i,1] <- psi[i] * cp 
 
-###   ## create linked list of parameters
-###   theta.df <- data.frame(parameter = character(), start = numeric(),
-###                          end = numeric(), stringsAsFactors = FALSE)
-###   theta.df <- addParm(theta.df, "phiParms", nPhiP)
-###   theta.df <- addParm(theta.df, "detParms", nDP)
-
-    nP <- nDP + nSP + nGP + nEP  # total number of parameters
-
-    y.itj <- as.numeric(t(y))
-
-    ## replace NA's with 99 before passing to C++
-    ## TODO: need better missing data passing mechanism (maybe NaN of Inf?)
-    y.itj[is.na(y.itj)] <- 99
-    V.itjk[is.na(V.itjk)] <- 9999
-    # get ragged array indices
-    y.it <- matrix(t(y), nY*M, J, byrow = TRUE)
-    J.it <- rowSums(!is.na(y.it))
-
-    V.arr <- array(t(V.itjk), c(nDP, nDMP, J, nY, M))
-    V.arr <- aperm(V.arr, c(2,1,5,4,3))
-
-    y.arr <- array(y.itj, c(J, nY, M))
-    y.arr <- aperm(y.arr, c(3:1))
-    storage.mode(J.it) <- storage.mode(y.arr) <- storage.mode(K) <-
-        "integer"
-
-    alpha <- array(NA, c(K + 1, nY, M))
-
-    forward <- function(detParms, phis, psis, storeAlpha = FALSE) {
-
-        negloglike <- 0
-        psiSite <- matrix(c(1-psis,psis), K + 1, M, byrow = TRUE)
-
-        mp <- array(V.itjk %*% detParms, c(nDMP, J, nY, M))
-        for(t in 1:nY) {
-            storage.mode(t) <- "integer"
-            detVecs <- .Call("getDetVecs", y.arr, mp,
-                             J.it[seq(from = t, to = length(J.it)-nY+t,
-                                      by=nY)], t, K,
-                             PACKAGE = "unmarked")
-            psiSite <- psiSite * detVecs
-            if(storeAlpha) alpha[,t,] <<- psiSite[,]
-            if(t < nY) {
-                for(i in 1:M) {
-                    psiSite[,i] <- phis[,,t,i] %*% psiSite[,i]
-                }
-            } else {
-                negloglike <- negloglike - sum(wts*log(colSums(psiSite)))
-            }
-        }
-        negloglike
+      # Case when z = 0
+      cp <- prod(na.omit(dbinom(ysub, 1, 0)))
+      alpha0[i,1] <- (1-psi[i]) * cp
     }
 
-    backward <- function(detParams, phis) {
-        beta <- array(NA, c(K + 1, nY, M))
-        for (i in 1:M) {
-            backP <- rep(1, K + 1)
-            for (t in nY:1) {
+    for (t in 2:T){
+      ysub <- y[i, tind == t]
+      psub <- p[i, tind == t]
 
-                beta[, t, i] <- backP
+      if(all(is.na(ysub))){
+        alpha1[i,t] <- alpha0[i,t-1] * col[i,t-1] + alpha1[i,t-1] * (1 - ext[i,t-1])
+        alpha0[i,t] <- alpha0[i,t-1] * (1-col[i,t-1]) + alpha1[i,t-1] * ext[i,t-1]
+      } else {
+        # Case when z = 1
+        cp <- prod(na.omit(dbinom(ysub, 1, psub)))
+        alpha1[i,t] <- (alpha0[i,t-1] * col[i,t-1] + alpha1[i,t-1] * (1 - ext[i,t-1])) * cp  
 
-                detVec <- rep(1, K + 1)
-                for (j in 1:J) {
-                    if(y.arr[i,t,j] != 99) {
-                        mp <- V.arr[,,i,t,j] %*% detParams
-                        detVecObs <- .Call("getSingleDetVec",
-                                           y.arr[i,t,j], mp, K,
-                                           PACKAGE = "unmarked")
-                        detVec <- detVec * detVecObs
-                    }
-                }
-                if (t > 1)
-                    backP <- t(phis[,,t-1,i]) %*% (detVec * backP)
-            }
-        }
-        return(beta)
+        # Case when z = 0
+        cp <- prod(na.omit(dbinom(ysub, 1, 0)))
+        alpha0[i,t] <- (alpha0[i,t-1] * (1-col[i,t-1]) + alpha1[i,t-1] * ext[i,t-1]) * cp
+      }
     }
 
-    X.gam <- X.it.gam %x% c(-1,1)
-    X.eps <- X.it.eps %x% c(-1,1)
-    phis <- array(NA,c(2,2,nY-1,M))
-    nll <- function(params) {
-        psis <- plogis(W.i %*% params[1:nSP])
-        colParams <- params[(nSP + 1) : (nSP + nGP)]
-        extParams <- params[(nSP + nGP + 1) : (nSP + nGP + nEP)]
-        detParams <- params[(nSP + nGP + nEP + 1) : nP]
-        #    psi <- plogis(params[1])
-        #    colParams <- params[2:(1+nPhiP)]
-        #    extParams <- params[(2 + nPhiP) : (1 + 2*nPhiP)]
-        #    detParams <- params[(2 + 2*nPhiP) : nP]
+    # Backwards pass
+    beta1 <- matrix(NA, M, T)
+    beta0 <- matrix(NA, M, T)
 
-        # these are in site-major, year-minor order
-        phis[,1,,] <- plogis(X.gam %*% colParams)
-        phis[,2,,] <- plogis(X.eps %*% -extParams)
+    # Initialize
+    beta1[i, T] <- 1
+    beta0[i, T] <- 1
+  
+    for (t in (T-1):1){
+      ysub <- y[i, tind == t+1]
+      psub <- p[i, tind == t+1]
 
-        forward(detParams, phis, psis) + 0.001*sqrt(sum(params^2))
+      if(all(is.na(ysub))){
+        beta1[i, t] <- ext[i,t] * beta0[i, t+1] + (1-ext[i,t]) * beta1[i, t+1]
+        beta0[i, t] <- (1-col[i,t]) * beta0[i, t+1] + col[i,t] * beta1[i, t+1]
+      } else {
+        cp1 <- prod(na.omit(dbinom(ysub, 1, psub)))
+        cp0 <- prod(na.omit(dbinom(ysub, 1, 0)))
+
+        # Case when z = 1
+        beta1[i, t] <- ext[i,t] * cp0 * beta0[i, t+1] + (1-ext[i,t]) * cp1 * beta1[i, t+1]
+        # Case when z = 0
+        beta0[i, t] <- (1-col[i,t]) * cp0 * beta0[i, t+1] + col[i,t] * cp1 * beta1[i, t+1]
+      }
     }
 
-    if(is.null(starts)) starts <- rep(0,nP)
-    fm <- optim(starts, nll, method=method, hessian = getHessian, ...)
-    mle <- fm$par
-
-    psis <- plogis(W.i %*% mle[1:nSP])
-    colParams <- mle[(nSP + 1) : (nSP + nGP)]
-    extParams <- mle[(nSP + nGP + 1) : (nSP + nGP + nEP)]
-    detParams <- mle[(nSP + nGP + nEP + 1) : nP]
-
-    ## computed projected estimates
-    phis[,1,,] <- plogis(X.gam %*% colParams)
-    phis[,2,,] <- plogis(X.eps %*% -extParams)
-
-    projected <- array(NA, c(2, nY, M))
-    projected[1,1,] <- 1 - psis
-    projected[2,1,] <- psis
-    for(i in 1:M) {
-        for(t in 2:nY) {
-            projected[,t,i] <- phis[,,t-1,i] %*% projected[,t-1,i]
-        }
+    out <- rep(0, T)
+    for (t in 1:T){
+      out[t] <- (alpha1[i,t] * beta1[i,t]) / (alpha0[i,t]*beta0[i,t] + alpha1[i,t] * beta1[i,t])
     }
-    projected.mean <- apply(projected, 1:2, mean)
-    rownames(projected.mean) <- c("unoccupied","occupied")
-    colnames(projected.mean) <- 1:nY
 
-    ## smoothing
-    forward(detParams, phis, psis, storeAlpha = TRUE)
-    beta <- backward(detParams, phis)
-    gamma <- array(NA, c(K + 1, nY, M))
-    for(i in 1:M) {
-    for(t in 1:nY) {
-        gamma[,t,i] <- alpha[,t,i]*beta[,t,i] / sum(alpha[,t,i]*beta[,t,i])
-    }}
-    smoothed.mean <- apply(gamma, 1:2, mean)
-    rownames(smoothed.mean) <- c("unoccupied","occupied")
-    colnames(smoothed.mean) <- 1:nY
+    smoothed[1, 1:T, i] <- 1 - out
+    smoothed[2, 1:T, i] <- out
+  }
 
-    parm.names <- c(psiParms, gamParms, epsParms, detParms)
-    mle.df <- data.frame(names = parm.names, value = mle)
-    rownames(mle.df) <- paste(c(rep("psi", nSP), rep("col", nGP),
-                                rep("ext", nEP), rep("det", nDP)),
-                              c(1:nSP,1:nGP,1:nEP, 1:nDP))
-
-    list(mle = mle.df, opt=fm, nP = nP, M = M, nDP = nDP, nGP = nGP,
-         nEP = nEP, nSP = nSP,
-         nllFun = nll, designMats = designMats,
-         projected = projected, projected.mean = projected.mean,
-         smoothed = gamma,
-         smoothed.mean = smoothed.mean)
+  smoothed
 }

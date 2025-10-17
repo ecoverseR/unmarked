@@ -4,7 +4,7 @@ test_that("formatDistData function works",{
     dat <- data.frame(distance=1:100, site=gl(5, 20),
                       visit=factor(rep(1:4, each=5)))
     cutpt <- seq(0, 100, by=25)
-    y <- formatDistData(dat, "distance", "site", cutpt)
+    y <- expect_warning(formatDistData(dat, "distance", "site", cutpt))
     expect_equivalent(y, matrix(c(20,   0,   0,   0,
                                     5,  15,   0,   0,
                                     0,  10,  10,   0,
@@ -12,7 +12,7 @@ test_that("formatDistData function works",{
                                     0,   0,   0,  20), 5, 4, byrow=TRUE))
     dat.bad <- dat
     dat.bad$distance <- as.character(dat$distance)
-    expect_error(formatDistData(dat.bad, "distance", "site", cutpt))
+    expect_error(expect_warning(formatDistData(dat.bad, "distance", "site", cutpt)))
 
     dat.bad <- dat
     dat.bad$site <- as.character(dat$site)
@@ -23,7 +23,7 @@ test_that("formatDistData function works",{
                                     0,   0,  15,   5,
                                     0,   0,   0,  20), 5, 4, byrow=TRUE))
 
-    y3 <- formatDistData(dat, "distance", "site", cutpt, "visit")
+    y3 <- expect_warning(formatDistData(dat, "distance", "site", cutpt, "visit"))
     expect_equivalent(y3, matrix(c(
 5, 0, 0, 0,   5, 0, 0, 0,   5, 0, 0, 0,   5, 0, 0, 0,
 5, 0, 0, 0,   0, 5, 0, 0,   0, 5, 0, 0,   0, 5, 0, 0,
@@ -32,7 +32,7 @@ test_that("formatDistData function works",{
 0, 0, 0, 5,   0, 0, 0, 5,   0, 0, 0, 5,   0, 0, 0, 5), 5, 16, byrow=TRUE))
 
     effortMatrix <- matrix(ncol=4, nrow=5,c(1,0))
-    y4 <- formatDistData(dat, "distance","site",cutpt, "visit",effortMatrix)
+    y4 <- expect_warning(formatDistData(dat, "distance","site",cutpt, "visit",effortMatrix))
     expect_equivalent(y4, matrix(c(
       5, 0, 0, 0,   NA,NA,NA,NA,  5, 0, 0, 0,   NA,NA,NA,NA,
       NA,NA,NA,NA,  0, 5, 0, 0,   NA,NA,NA,NA,   0, 5, 0, 0,
@@ -41,7 +41,7 @@ test_that("formatDistData function works",{
       0, 0, 0, 5,   NA,NA,NA,NA,   0, 0, 0, 5,   NA,NA,NA,NA), 5, 16, byrow=TRUE))
 
     effortMatrix <- matrix(ncol=4, nrow=5,"a")
-    expect_error(formatDistData(dat, "distance","site",cutpt, "visit",effortMatrix))
+    expect_error(expect_warning(formatDistData(dat, "distance","site",cutpt, "visit",effortMatrix)))
 })
 
 test_that("formatLong works correctly",{
@@ -217,7 +217,7 @@ test_that("formatMult works correctly",{
     y  = rpois(nrow(test), lambda = 2)
   })
 
-  withfac <- formatMult(test)
+  withfac <- expect_warning(formatMult(test))
 
   expect_equal(withfac,
               new("unmarkedMultFrame",

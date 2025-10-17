@@ -13,9 +13,9 @@ Type tmb_goccu(objective_function<Type>* obj) {
 
   DATA_INTEGER(link);
 
-  DATA_MATRIX(Xpsi);
-  DATA_MATRIX(Xphi);
-  DATA_MATRIX(Xp);
+  DATA_MATRIX(X_psi);
+  DATA_MATRIX(X_phi);
+  DATA_MATRIX(X_det);
 
   DATA_INTEGER(n_possible);
   DATA_MATRIX(alpha_potential);
@@ -26,11 +26,11 @@ Type tmb_goccu(objective_function<Type>* obj) {
 
   PARAMETER_VECTOR(beta_psi);
   PARAMETER_VECTOR(beta_phi);
-  PARAMETER_VECTOR(beta_p);
+  PARAMETER_VECTOR(beta_det);
 
-  vector<Type> psi = Xpsi * beta_psi;
-  vector<Type> phi = Xphi * beta_phi;
-  vector<Type> p = Xp * beta_p;
+  vector<Type> psi = X_psi * beta_psi;
+  vector<Type> phi = X_phi * beta_phi;
+  vector<Type> p = X_det * beta_det;
 
   if(link == 1){
     //psi = cloglog(psi);

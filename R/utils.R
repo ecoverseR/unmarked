@@ -46,24 +46,6 @@ logistic.grad <- function(x) {
   exp(-x)/(exp(-x)+1)^2
 }
 
-
-# This function causes check failures on CRAN because CRAN thinks it's
-# a method for the log function. I don't think it's actually used in the package?
-#log.grad <- function(x) { # duh! (but for clarity)
-#  1/x
-#}
-
-
-explink <- function(x) exp(x)
-
-exp1 <- function(x) exp(x) + 1
-
-
-identLink <- function(x) x
-
-
-identLinkGrad <- function(x) 1
-
 #Complimentary log log link
 cloglog <- function(x){
   1-exp(-exp(x))
@@ -80,55 +62,13 @@ rowProds <- function(x, na.rm = FALSE)
   exp(rowSums(log(x), na.rm = na.rm))
 }
 
-## compute estimated asymptotic variances of parameter estimates
-## using the observed information matrix
-
-#sd.est <- function(fm) {
-#    sqrt(diag(solve(fm$hessian)))
-#}
-
-## delta method for variance of proportion given variance of its logistic-
-## transformed counterpart
-##' @nord
-#sd.prop <- function(est,sd.est) {
-#    exp(-est)/(1 + exp(-est))^2 * sd.est
-#}
-
-### track linked list of parameters using a data frame
-### add row to linked list
-addParm <- function(list.df, parm.name, parm.length) {
-    if(parm.length > 0) {
-        if(nrow(list.df) == 0) {
-            last.ind <- 0
-        } else {
-            last.ind <- list.df$end[nrow(list.df)]
-        }
-        parm.df <- data.frame(parameter = parm.name, start = last.ind + 1,
-                              end = last.ind + parm.length,
-                              stringsAsFactors = FALSE)
-        list.df <- rbind(list.df, parm.df)
-    }
-    return(list.df)
-}
-
-
-parmNames <- function(list.df) {
-    npar <- list.df$end[nrow(list.df)]
-    names <- character(npar)
-    for(i in 1:npar) {
-        which.par <- which(i >= list.df$start & i <= list.df$end)
-        names[i] <- list.df$parameter[which.par]
-    }
-    return(names)
-}
-
-
 # This function converts an appropriatedly formated comma-separated
 # values file (.csv) to a format usable by \emph{unmarked}'s fitting
 # functions (see \emph{Details}).
 csvToUMF <-
 function(filename, long=FALSE, type, species = NULL, ...)
 {
+
   dfin <- read.csv(filename, stringsAsFactors=TRUE)
 
   if(long == TRUE) return(formatLong(dfin, species, type = type, ...))
@@ -341,6 +281,9 @@ formatWide <- function(dfin, sep = ".", obsToY, type, ...) {
 
 formatMult <- function(df.in)
 {
+  .Deprecated("formatMult", package=NULL, 
+              msg = paste("formatMult will be deprecated in the next version."),
+             old = as.character(sys.call(sys.parent()))[1L])
     years <- sort(unique(df.in[[1]]))
     nY <- length(years)
     df.obs <- list()
@@ -448,49 +391,6 @@ formatMult <- function(df.in)
     return(umf)
 }
 
-# function to take data of form
-# site  | species | count
-# to
-# site | spp1 | spp2 | ...
-
-#Not used anywhere
-#sppLongToWide <- function(df.in)
-#{
-#    df.m <- melt(df.in, id = c("site", "spp"))
-#    df.out <- dcast(df.m, site ~ spp, add.missing=T, fill = 0)
-#    df.out <- df.out[order(df.out$site),]
-#    df.out
-#}
-
-# get estimated psi from rn fit
-
-getPsi <-
-function(lam)
-{
-  1-exp(-lam)
-}
-
-# get estimatd p from rn fit (only for a null type model so far)
-
-getP.bar <-
-function(lam, r)
-{
-    K = 30
-    psi <- getPsi(lam)
-    pN.k <- dpois(0:K,lam)
-    pY.k <- 1 - (1 - r)^(0:30)
-    sum(pY.k * pN.k)
-}
-
-
-
-
-
-
-meanstate <- function(x) {
-    K <- length(x) - 1
-    sum(x*(0:K))
-}
 
 truncateToBinary <- function(y) {
     if(max(y, na.rm = TRUE) > 1) {
@@ -501,60 +401,11 @@ truncateToBinary <- function(y) {
 }
 
 
-getSS <- function(phi) {
-    ev.length <- nrow(phi)
-    ev <- tryCatch(eigen(t(phi))$vectors[,1],
-                   error = function(x) rep(NA, ev.length))
-    ev/sum(ev)
-}
-
-imputeMissing <- function(umf, whichCovs = seq(length=ncol(obsCovs(umf))))
-{
-    .Deprecated("imputeMissing", package=NULL, 
-              msg = paste("imputeMissing will be deprecated in the next version."),
-             old = as.character(sys.call(sys.parent()))[1L])
-
-    ## impute observation covariates
-    if(!is.null(umf@obsCovs)) {
-        obsCovs <- umf@obsCovs
-        J <- obsNum(umf)
-        M <- nrow(obsCovs)/J
-        obs <- as.matrix(obsCovs[,whichCovs])
-        whichrows <- apply(obs, 1, function(x) any(!is.na(x)))
-        if(sum(whichrows) == 0) return(obsCovs)
-        whichels <- matrix(whichrows, M, J, byrow = TRUE)
-        for(i in seq(length=length(whichCovs))) {
-            obs.i <- obs[,i]
-            obs.i.mat <- matrix(obs.i, M, J, byrow = TRUE) # get ith obsvar
-            obs.i.missing <- is.na(obs.i.mat) & !whichels
-            obs.i.imputed <- obs.i.mat
-            for(j in 1:M) {
-                for(k in 1:J) {
-                    if(obs.i.missing[j,k])
-                        if(all(is.na(obs.i.mat[j,]))) {
-                            obs.i.imputed[j,k] <- mean(obs.i.mat[,k],
-                                                       na.rm = T)
-                        } else {
-                           obs.i.imputed[j,k] <- mean(c(mean(obs.i.mat[j,],
-                                                             na.rm = T),
-                                                        mean(obs.i.mat[,k],
-                                                             na.rm = T)))
-                        }
-                }
-            }
-            obsCovs[,whichCovs[i]] <- as.numeric(t(obs.i.imputed))
-        }
-        umf@obsCovs <- obsCovs
-    }
-    # TODO: impute site covariates
-    return(umf)
-}
-
-
-
-
 lambda2psi <- function(lambda)
 {
+.Deprecated("lambda2psi", package=NULL, 
+              msg = paste("lambda2psi will be deprecated in the next version."),
+             old = as.character(sys.call(sys.parent()))[1L])
 if(any(lambda < 0))
     stop("lambda must be >= 0")
 as.numeric(1 - exp(-lambda))
@@ -566,6 +417,9 @@ as.numeric(1 - exp(-lambda))
 
 formatDistData <- function (distData, distCol, transectNameCol, dist.breaks, occasionCol,effortMatrix)
 {
+  .Deprecated("formatDistData", package=NULL, 
+              msg = paste("formatDistData will be deprecated in the next version."),
+             old = as.character(sys.call(sys.parent()))[1L])
   if (!is.numeric(distData[, distCol]))
     stop("The distances must be numeric")
   transects <- distData[, transectNameCol]
@@ -629,18 +483,7 @@ formatDistData <- function (distData, distCol, transectNameCol, dist.breaks, occ
 }
 
 
-## Sight distance to perpendicular distance
-
-sight2perpdist <- function(sightdist, sightangle)
-{
-    if(any(0 > sightangle | sightangle > 180))
-        stop("sightangle must be degrees in [0, 180]")
-    sightdist * sin(sightangle * pi / 180)
-}
-
 #Sum of squared errors method
-setGeneric("SSE", function(fit, ...) standardGeneric("SSE"))
-
 setMethod("SSE", "unmarkedFit", function(fit, ...){
     sse <- sum(residuals(fit)^2, na.rm=TRUE)
     return(c(SSE=sse))
@@ -651,78 +494,12 @@ setMethod("SSE", "unmarkedFitOccuMulti", function(fit, ...){
     return(c(SSE = sum(r^2, na.rm=T)))
 })
 
-# For pcountOpen. Calculate time intervals acknowledging gaps due to NAs
-# The first column indicates is time since first primary period + 1
-formatDelta <- function(d, yna)
-{
-    M <- nrow(yna)
-    T <- ncol(yna)
-    d <- d - min(d, na.rm=TRUE) + 1
-    dout <- matrix(NA, M, T)
-    dout[,1] <- d[,1]
-    dout[,2:T] <- t(apply(d, 1, diff))
-    for(i in 1:M) {
-        if(any(yna[i,]) & !all(yna[i,])) { # 2nd test for simulate
-            last <- max(which(!yna[i,]))
-            y.in <- yna[i, 1:last]
-            d.in <- d[i, 1:last]
-            if(any(y.in)) {
-                for(j in last:2) { # first will always be time since 1
-                    nextReal <- which(!yna[i, 1:(j-1)])
-                    if(length(nextReal) > 0)
-                        dout[i, j] <- d[i, j] - d[i, max(nextReal)]
-                    else
-                        dout[i, j] <- d[i, j] - 1
-                    }
-                }
-            }
-        }
-    return(dout)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Generate zero-inflated Poisson
 
 rzip <- function(n, lambda, psi) {
     x <- rpois(n, lambda)
     x[runif(n) < psi] <- 0
     x
-}
-
-#Converts names to indices for occuMulti() and methods
-name_to_ind <- function(x,name_list){
-
-  if(is.null(x)) return(x)
-
-  if(is.numeric(x)){
-    if(any(x>length(name_list))){
-      stop("Supplied species index is invalid")
-    }
-    return(x)
-  }
-
-  absent_adjust <- ifelse(grepl('^-',x),-1,1)
-  clean <- sub('-','',x)
-  if(!all(clean %in% name_list)){
-    stop("Supplied species name not found")
-  }
-  out <- match(clean,name_list)
-
-
-  out * absent_adjust
 }
 
 #Inverts Hessian. Returns blank matrix with a warning on a failure.
@@ -972,25 +749,6 @@ dzip <- function(x, lambda, psi) {
   den[zer] <- psi + (1-psi)*exp(-lambda[zer])
   den[gr0] <- (1-psi)*dpois(x[gr0], lambda[gr0])
   den
-}
-
-# Expected value of log lambda when there is a random intercept
-E_loglam <- function(log_lam, object, name){
-
-  if(!methods::.hasSlot(object, "TMB") || is.null(object@TMB)){
-    return(log_lam)
-  }
-  sig <- sigma(object)
-  if(! name %in% sig$Model) return(log_lam)
-
-  sig <- sig[sig$Model==name,]
-  can_calculate <- (nrow(sig) == 1) & (sig$Name[1] == "(Intercept)")
-  if(! can_calculate){
-    stop("No support for models with > 1 random effect", call.=FALSE)
-  }
-  v <- sig$sigma^2
-  ll <- log_lam + v/2
-  ll
 }
 
 sapply2 <- function(X, FUN, ..., cl = NULL){

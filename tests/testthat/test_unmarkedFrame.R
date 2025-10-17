@@ -5,7 +5,7 @@ test_that("unmarkedFrame can be constructed",{
   J <- 3
   y <- matrix(rbinom(J * M, 1, 0.5), M, J)
   siteCovs <- data.frame(a = rnorm(M), b = factor(gl(2,5)))
-  umf <- unmarkedFrame(y = y, siteCovs = siteCovs)
+  umf <- unmarkedFrameOccu(y = y, siteCovs = siteCovs)
   expect_is(umf, "unmarkedFrame")
 
   out <- capture.output(umf)
@@ -16,6 +16,22 @@ test_that("unmarkedFrame can be constructed",{
   # convert to data frame
   df <- as(umf, "data.frame")
   expect_is(df, "data.frame")
+
+  # Subset sites
+  expect_equal(numSites(umf[1:3,]), 3)
+  umf1 <- umf[1,]
+  umf112 <- umf[c(1,1,2),]
+  expect_equivalent(umf112[1,], umf1)
+  expect_equivalent(umf112[2,], umf1)
+  expect_equivalent(umf112[3,], umf[2,])
+  expect_equal(umf[c(TRUE, TRUE, rep(FALSE, 8)),], umf[1:2])
+
+  # Subset obs
+  expect_equal(obsNum(umf[,1:2]), 2)
+  umf112 <- umf[,c(1,1,2,2)]
+  expect_equal(umf112@y[,1], umf112@y[,2])
+  expect_equal(obsNum(umf112), 4)
+  expect_equal(umf[,c(TRUE, FALSE, TRUE)], umf[,c(1,3)])
 })
 
 test_that("obsToY works", {
@@ -145,6 +161,7 @@ test_that("unmarkedMultFrame subset works",{
     expect_equal(umf1.obs1@numPrimary, 1)
 
     umf1.obs1and3 <- umf1[,c(1,3)]
+    expect_equal(umf1[,c(TRUE, FALSE, TRUE)], umf1.obs1and3)
 
     umf1.site1 <- umf1[1,]
     expect_equal(umf1.site1@y, y[1,, drop=FALSE])
@@ -155,6 +172,8 @@ test_that("unmarkedMultFrame subset works",{
     expect_equal(umf1.site1@numPrimary, 3)
 
     umf1.sites1and3 <- umf1[c(1,3),]
+
+    expect_equal(umf1[c(TRUE, FALSE, TRUE)], umf1.sites1and3)
 })
 
 test_that("unmmarkedMultFrame handles unequal secondary periods",{

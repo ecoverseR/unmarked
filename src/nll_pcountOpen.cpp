@@ -8,11 +8,11 @@ using namespace Rcpp ;
 
 
 // [[Rcpp::export]]
-double nll_pcountOpen(arma::imat ym, arma::mat Xlam, arma::mat Xgam, arma::mat Xom,
-    arma::mat Xp, arma::mat Xiota, arma::colvec beta_lam, arma::colvec beta_gam,
+double nll_pcountOpen(arma::imat ym, arma::mat X_lambda, arma::mat X_gamma, arma::mat X_omega,
+    arma::mat X_det, arma::mat X_iota, arma::colvec beta_lam, arma::colvec beta_gam,
     arma::colvec beta_om, arma::colvec beta_p, arma::colvec beta_iota,
-    double log_alpha, arma::colvec Xlam_offset, arma::colvec Xgam_offset,
-    arma::colvec Xom_offset, arma::colvec Xp_offset, arma::colvec Xiota_offset,
+    double log_alpha, arma::colvec offset_lambda, arma::colvec offset_gamma,
+    arma::colvec offset_omega, arma::colvec offset_det, arma::colvec offset_iota,
     arma::imat ytna, arma::imat ynam, int lk, std::string mixture,
     Rcpp::IntegerVector first, Rcpp::IntegerVector last, int M, int J, int T,
     arma::imat delta, std::string dynamics, std::string fix, std::string go_dims,
@@ -28,13 +28,13 @@ double nll_pcountOpen(arma::imat ym, arma::mat Xlam, arma::mat Xgam, arma::mat X
     psi = 1.0/(1.0+exp(-log_alpha));
 
   // linear predictors
-  arma::colvec lam = exp(Xlam*beta_lam + Xlam_offset);
+  arma::colvec lam = exp(X_lambda*beta_lam + offset_lambda);
   arma::mat omv = arma::ones<arma::colvec>(M*(T-1));
   if((fix != "omega") && (dynamics != "trend")) {
     if((dynamics == "ricker")  || (dynamics == "gompertz"))
-        omv = exp(Xom*beta_om + Xom_offset);
+        omv = exp(X_omega*beta_om + offset_omega);
     else if((dynamics == "constant")  || (dynamics == "autoreg") || (dynamics == "notrend"))
-        omv = 1.0/(1.0+exp(-1*(Xom*beta_om + Xom_offset)));
+        omv = 1.0/(1.0+exp(-1*(X_omega*beta_om + offset_omega)));
   }
   omv.reshape(T-1, M);
   arma::mat om = arma::trans(omv);
@@ -44,18 +44,18 @@ double nll_pcountOpen(arma::imat ym, arma::mat Xlam, arma::mat Xgam, arma::mat X
     gam = (1-om) % lamMat;
   } else {
     if(fix != "gamma") {
-      arma::mat gamv = exp(Xgam*beta_gam + Xgam_offset);
+      arma::mat gamv = exp(X_gamma*beta_gam + offset_gamma);
       gamv.reshape(T-1, M);
       gam = arma::trans(gamv);
     }
   }
-  arma::mat pv = 1.0/(1.0+exp(-1*(Xp*beta_p + Xp_offset)));
+  arma::mat pv = 1.0/(1.0+exp(-1*(X_det*beta_p + offset_det)));
   pv.reshape(J*T, M);
   arma::mat pm = trans(pv);
   //Immigration
   arma::mat iotav = arma::zeros<arma::colvec>(M*(T-1));
   if(immigration) {
-    iotav = exp(Xiota*beta_iota + Xiota_offset);
+    iotav = exp(X_iota*beta_iota + offset_iota);
   }
   iotav.reshape(T-1, M);
   arma::mat iota = arma::trans(iotav);

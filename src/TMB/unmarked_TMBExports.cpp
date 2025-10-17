@@ -11,6 +11,7 @@
 #include "tmb_gdistremoval.hpp"
 #include "tmb_IDS.hpp"
 #include "tmb_goccu.hpp"
+#include "tmb_colext.hpp"
 
 template<class Type>
 Type objective_function<Type>::operator() () {
@@ -29,6 +30,8 @@ Type objective_function<Type>::operator() () {
     return tmb_IDS(this);
   } else if(model == "tmb_goccu"){
     return tmb_goccu(this);
+  } else if(model == "tmb_colext"){
+    return tmb_colext(this);
   }
   return 0;
 }

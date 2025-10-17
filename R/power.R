@@ -1,13 +1,3 @@
-setClass("unmarkedPower",
-  representation(call="call", data="unmarkedFrame", M="numeric",
-                 J="numeric", T="numeric", coefs="list", estimates="list",
-                 alpha="numeric", nulls="list")
-)
-
-setGeneric("powerAnalysis", function(object, ...){
-  standardGeneric("powerAnalysis")
-})
-
 # unmarkedFrame method
 # TODO: random effects handling
 # TODO: parallel processing
@@ -255,11 +245,6 @@ plot_power <- function(object, ind, alpha, ...){
 }
 
 # unmarkedPowerlist stuff------------------------------------------------------
-
-setClass("unmarkedPowerList", representation(powerAnalyses="list"))
-
-setGeneric("unmarkedPowerList", function(object, ...){
-             standardGeneric("unmarkedPowerList")})
 
 setMethod("unmarkedPowerList", "unmarkedPower", function(object, ...){
 

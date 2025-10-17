@@ -1,20 +1,9 @@
 # ----------------- Empirical Bayes Methods ------------------------------
 
-setGeneric("ranef",
-    function(object, ...) standardGeneric("ranef"))
-
-setClass("unmarkedRanef",
-    representation(post = "array"))
-
 # Overall exported function
 setMethod("ranef", "unmarkedFit", function(object, ...){
   ranef_internal(object, ...)
 })
-
-
-# Internal fit-type-specific function
-setGeneric("ranef_internal", function(object, ...) standardGeneric("ranef_internal"))
-
 
 setMethod("ranef_internal", "unmarkedFitColExt", function(object){
     data <- object@data
@@ -77,9 +66,7 @@ setMethod("ranef_internal", "unmarkedFitColExt", function(object){
 # DSO and MMO
 setMethod("ranef_internal", "unmarkedFitDailMadsen", function(object, ...){
     dyn <- object@dynamics
-    formlist <- object@formlist
-    formula <- as.formula(paste(unlist(formlist), collapse=" "))
-    D <- getDesign(object@data, formula, na.rm=FALSE)
+    D <- getDesign(object@data, object@formlist, na.rm=FALSE)
     delta <- D$delta
     deltamax <- max(delta, na.rm=TRUE)
     if(!.hasSlot(object, "immigration")){ #For backwards compatibility
@@ -89,7 +76,8 @@ setMethod("ranef_internal", "unmarkedFitDailMadsen", function(object, ...){
     }
 
     #TODO: adjust if output = "density"
-    lam <- predict(object, type="lambda",level=NULL, na.rm=FALSE)$Predicted # Slow, use D$Xlam instead
+    # Can't use predict because it will be incorrect with ZIP
+    lam <- exp(D$X_lambda %*% coef(object, "lambda") + D$offset_lambda)
 
     R <- length(lam)
     T <- object@data@numPrimary
@@ -354,9 +342,8 @@ setMethod("ranef_internal", "unmarkedFitOccuFP", function(object, ...){
 })
 
 
-# Function that works for both GMM and GDS
-# Avoiding class union that doesn't work for some reason
-ranef_GMM_GDS <- function(object, ...){
+# Function that works for both GMM and GDS (which inherits from GMM)
+setMethod("ranef_internal", "unmarkedFitGMM", function(object, ...){
     data <- object@data
     y <- getY(data)
     nSites <- numSites(data)
@@ -427,15 +414,6 @@ ranef_GMM_GDS <- function(object, ...){
         post[i,,1] <- fudge/sum(fudge)
     }
     new("unmarkedRanef", post=post)
-
-}
-
-setMethod("ranef_internal", "unmarkedFitGDS", function(object, ...){
-  ranef_GMM_GDS(object, ...)
-})
-
-setMethod("ranef_internal", "unmarkedFitGMM", function(object, ...){
-  ranef_GMM_GDS(object, ...)
 })
 
 
@@ -777,7 +755,9 @@ setMethod("ranef_internal", "unmarkedFitOccuTTD", function(object, ...){
 
 
 setMethod("ranef_internal", "unmarkedFitPCount", function(object, ...){
-    lam <- predict(object, type="state", level=NULL, na.rm=FALSE)$Predicted
+    # Can't use predict because it will be incorrect with ZIP
+    dm <- getDesign(object@data, object@formlist, na.rm = FALSE)
+    lam <- exp(dm$X_state %*% coef(object, "state") + dm$offset_state)
     R <- length(lam)
     p <- getP(object)
     K <- object@K
@@ -815,10 +795,7 @@ setMethod("ranef_internal", "unmarkedFitPCount", function(object, ...){
 
 setMethod("ranef_internal", "unmarkedFitPCO", function(object, ...){
     dyn <- object@dynamics
-    
-    formlist <- object@formlist
-    formula <- as.formula(paste(unlist(formlist), collapse=" "))
-    D <- getDesign(object@data, formula, na.rm=FALSE)
+    D <- getDesign(object@data, object@formlist, na.rm=FALSE)
     delta <- D$delta
     deltamax <- max(delta, na.rm=TRUE)
     if(!.hasSlot(object, "immigration")) #For backwards compatibility
@@ -932,8 +909,6 @@ setMethod("ranef_internal", "unmarkedFitPCO", function(object, ...){
 })
 
 
-setGeneric("bup", function(object, stat=c("mean", "mode"), ...)
-    standardGeneric("bup"))
 setMethod("bup", "unmarkedRanef",
           function(object, stat=c("mean", "mode"), ...) {
     stat <- match.arg(stat)

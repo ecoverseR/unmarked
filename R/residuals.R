@@ -4,15 +4,46 @@ setMethod("residuals", "unmarkedFit", function(object, ...){
 })
 
 # Internal method for specific fit types, not exported
-setGeneric("residuals_internal", function(object){
-  standardGeneric("residuals_internal")
-})
-
 setMethod("residuals_internal", "unmarkedFit", function(object) {
     y <- getY(object)
     e <- fitted(object)
     r <- y - e
     return(r)
+})
+
+setMethod("residuals_internal", "unmarkedFitGDR", function(object){
+  ft <- fitted(object)
+  list(dist=object@data@yDistance - ft$dist, rem=object@data@yRemoval-ft$rem)
+})
+
+setMethod("residuals_internal", "unmarkedFitIDS", function(object){
+
+  dists <- names(object)[names(object) %in% c("ds", "pc")]
+
+  # distance and N-mix data
+  out <- lapply(dists, function(x){
+    conv <- IDS_convert_class(object, type=x)
+    residuals(conv)
+  })
+  names(out) <- dists
+
+  # occupancy data
+  if("oc" %in% names(object)){
+    y <- object@dataOC@y
+    ft <- fitted(object)$oc
+    out$oc <- y - ft
+  }
+
+  out
+})
+
+setMethod("residuals_internal", "unmarkedFitOccuComm", function(object) {
+  ylist <- getY(object)
+  fitlist <- fitted(object)
+
+  mapply(function(x, y){
+    x - y
+  }, x = ylist, y = fitlist, SIMPLIFY = FALSE)
 })
 
 setMethod("residuals_internal", "unmarkedFitOccuMulti", function(object) {

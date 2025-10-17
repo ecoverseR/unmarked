@@ -2,7 +2,7 @@
 
 \alias{occuMulti}
 
-\title{Fit the Rota et al. (2016) Multi-species Occupancy Model}
+\title{Fit the multi-species occupancy model of Rota et al. (2016)}
 
 \usage{occuMulti(detformulas, stateformulas, data, maxOrder, penalty=0, boot=30, 
        starts, method="BFGS", se=TRUE, engine=c("C","R"), silent=FALSE, ...)}

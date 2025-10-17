@@ -55,6 +55,7 @@ For more detailed analyses of this dataset, see [Applied Hiearchical Modeling in
 You can also check `?MHB2014` for more information.
 
 ```{r}
+set.seed(123)
 library(AHMbook)
 data(MHB2014)
 names(MHB2014)

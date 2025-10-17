@@ -1,18 +1,3 @@
-setClass("unmarkedFitGOccu",
-    representation(
-        formlist = "list"),
-    contains = "unmarkedFit")
-
-setClass("unmarkedFrameGOccu", contains = "unmarkedFrameG3")
-
-setMethod("getDesign", "unmarkedFrameGOccu",
-  function(umf, formula, na.rm=TRUE){
-  out <- methods::callNextMethod(umf, formula=formula, na.rm=na.rm)
-  names(out)[2] <- "Xpsi"
-  names(out)[5] <- "Xpsi.offset"
-  out
-})
-
 unmarkedFrameGOccu <- function(y, siteCovs=NULL, obsCovs=NULL, numPrimary,
                              yearlySiteCovs=NULL) {
   y[y > 1] <- 1
@@ -32,25 +17,14 @@ goccu <- function(psiformula, phiformula, pformula, data,
   psiInvLink <- ifelse(linkPsi=="cloglog", "cloglog", "logistic")
   psiLinkGrad <- ifelse(linkPsi=="cloglog", "cloglog.grad", "logistic.grad")
 
-  # Pass phiformula as gamma/eps formula so it will be applied to
-  # yearlySiteCovs in getDesign
-  formlist <- list(psiformula=psiformula, phiformula=phiformula,
-                  pformula=pformula)
-
-  formula <- as.formula(paste(unlist(formlist), collapse=" "))
+  formulas <- list(psi=psiformula, phi=phiformula, det=pformula)
 
   data@y[data@y > 1] <- 1
  
   class(data) <- "unmarkedFrameGOccu"
 
-  # handle offsets
-
-  gd <- getDesign(data, formula = formula)
-
+  gd <- getDesign(data, formulas)
   y <- gd$y
-  Xpsi <- gd$Xpsi
-  Xphi <- gd$Xphi
-  Xp <- gd$Xdet
 
   M <- nrow(y)
   T <- data@numPrimary
@@ -96,7 +70,7 @@ goccu <- function(psiformula, phiformula, pformula, data,
 
   # Bundle data for TMB
   dataList <- list(y=y, T=T, link=ifelse(linkPsi=='cloglog', 1, 0), 
-                   Xpsi=Xpsi, Xphi=Xphi, Xp=Xp,
+                   X_psi=gd$X_psi, X_phi=gd$X_phi, X_det=gd$X_det,
                    n_possible=n_possible,
                    alpha_potential=alpha_potential, alpha_drop = alpha_drop,
                    known_present=known_present, known_available=known_available, 
@@ -104,13 +78,13 @@ goccu <- function(psiformula, phiformula, pformula, data,
 
   # Provide dimensions and starting values for parameters
   # This part should change to be more like occu() if we add random effects
-  psi_ind <- 1:ncol(Xpsi)
-  phi_ind <- 1:ncol(Xphi) + max(psi_ind)
-  p_ind <- 1:ncol(Xp) + max(phi_ind)
-  nP <- max(p_ind)
+  psi_ind <- 1:ncol(gd$X_psi)
+  phi_ind <- 1:ncol(gd$X_phi) + max(psi_ind)
+  det_ind <- 1:ncol(gd$X_det) + max(phi_ind)
+  nP <- max(det_ind)
   params <- list(beta_psi = rep(0, length(psi_ind)), 
                  beta_phi = rep(0, length(phi_ind)), 
-                 beta_p = rep(0, length(p_ind)))
+                 beta_det = rep(0, length(det_ind)))
 
   # Create TMB object
   tmb_mod <- TMB::MakeADFun(data = c(model = "tmb_goccu", dataList),
@@ -124,14 +98,14 @@ goccu <- function(psiformula, phiformula, pformula, data,
 
   covMat <- invertHessian(opt, nP, se)
   ests <- opt$par
-  names(ests) <- c(colnames(Xpsi), colnames(Xphi), colnames(Xp))
+  names(ests) <- c(colnames(gd$X_psi), colnames(gd$X_phi), colnames(gd$X_det))
   fmAIC <- 2 * opt$value + 2 * nP
 
 
   psi_est <- unmarkedEstimate(name = "Occupancy", short.name = "psi",
                               estimates = ests[psi_ind],
                               covMat = covMat[psi_ind, psi_ind, drop=FALSE],
-                              fixed = 1:ncol(Xpsi),
+                              fixed = 1:ncol(gd$X_psi),
                               invlink = psiInvLink,
                               invlinkGrad = psiLinkGrad,
                               randomVarInfo=list()
@@ -140,27 +114,26 @@ goccu <- function(psiformula, phiformula, pformula, data,
   phi_est <- unmarkedEstimate(name = "Availability", short.name = "phi",
                               estimates = ests[phi_ind],
                               covMat = covMat[phi_ind, phi_ind, drop=FALSE],
-                              fixed = 1:ncol(Xphi),
+                              fixed = 1:ncol(gd$X_phi),
                               invlink = "logistic",
                               invlinkGrad = "logistic.grad",
                               randomVarInfo=list()
                             )
 
-  p_est <- unmarkedEstimate(name = "Detection", short.name = "p",
-                              estimates = ests[p_ind],
-                              covMat = covMat[p_ind, p_ind, drop=FALSE],
-                              fixed = 1:ncol(Xp),
+  det_est <- unmarkedEstimate(name = "Detection", short.name = "p",
+                              estimates = ests[det_ind],
+                              covMat = covMat[det_ind, det_ind, drop=FALSE],
+                              fixed = 1:ncol(gd$X_det),
                               invlink = "logistic",
                               invlinkGrad = "logistic.grad",
                               randomVarInfo=list()
                             )
 
-  estimate_list <- unmarkedEstimateList(list(psi=psi_est, phi=phi_est,
-                                                        det=p_est))
+  estimate_list <- unmarkedEstimateList(list(psi=psi_est, phi=phi_est, det=det_est))
 
   # Create unmarkedFit object--------------------------------------------------
   umfit <- new("unmarkedFitGOccu", fitType = "goccu", call = match.call(),
-                 formula = formula, formlist=formlist, data = data,
+                 formlist=formulas, data = data,
                  sitesRemoved = gd$removed.sites,
                  estimates = estimate_list, AIC = fmAIC, opt = opt,
                  negLogLike = opt$value,
@@ -172,26 +145,6 @@ goccu <- function(psiformula, phiformula, pformula, data,
 
 # Methods
 
-setMethod("predict_inputs_from_umf", "unmarkedFitGOccu",
-  function(object, type, newdata, na.rm, re.form=NA){
-  designMats <- getDesign(newdata, object@formula, na.rm=na.rm)
-  X_idx <- switch(type, psi="Xpsi", phi="Xphi", det="Xdet")
-  off_idx <- paste0(X_idx, ".offset")
-  list(X=designMats[[X_idx]], offset=NULL)
-})
-
-setMethod("get_formula", "unmarkedFitGOccu", function(object, type, ...){
-  fl <- object@formlist
-  switch(type, psi=fl$psiformula, phi=fl$phiformula, det=fl$pformula)
-})
-
-setMethod("get_orig_data", "unmarkedFitGOccu", function(object, type, ...){
-  clean_covs <- clean_up_covs(object@data, drop_final=FALSE)
-  datatype <- switch(type, psi='site_covs', phi='yearly_site_covs',
-                     det='obs_covs')
-  clean_covs[[datatype]]
-})
-
 setMethod("getP_internal", "unmarkedFitGOccu", function(object){
   M <- numSites(object@data)
   J <- ncol(object@data@y)
@@ -199,25 +152,6 @@ setMethod("getP_internal", "unmarkedFitGOccu", function(object){
   p <- matrix(p, nrow=M, ncol=J, byrow=TRUE)
   p
 })
-
-setMethod("fitted_internal", "unmarkedFitGOccu", function(object){
-  # TODO: Use predict here
-  M <- numSites(object@data)
-  JT <- obsNum(object@data)  
-  gd <- getDesign(object@data, object@formula, na.rm=FALSE)
-
-  psi <- drop(plogis(gd$Xpsi %*% coef(object, "psi")))
-  psi <- matrix(psi, nrow=M, ncol=JT)
-
-  phi <- drop(plogis(gd$Xphi %*% coef(object, "phi")))
-  phi <- rep(phi, each = JT / object@data@numPrimary)
-  phi <- matrix(phi, nrow=M, ncol=JT, byrow=TRUE)
-
-  p <- getP(object)
-
-  psi * phi * p
-})
-
 
 # based on ranef for GPC
 setMethod("ranef_internal", "unmarkedFitGOccu", function(object, ...){
@@ -227,20 +161,21 @@ setMethod("ranef_internal", "unmarkedFitGOccu", function(object, ...){
   T <- object@data@numPrimary
   J <- JT / T
 
-  gd <- getDesign(object@data, object@formula, na.rm=FALSE)
-  y_array <- array(t(gd$y), c(J, T, M)) 
+  gd <- getDesign(object@data, object@formlist, na.rm=FALSE)
+  y_array <- array(t(gd$y), c(J, T, M))
 
-  psi <- drop(plogis(gd$Xpsi %*% coef(object, "psi")))
-  phi <- drop(plogis(gd$Xphi %*% coef(object, "phi")))
+  psi <- drop(plogis(gd$X_psi %*% coef(object, "psi")))
+  phi <- drop(plogis(gd$X_phi %*% coef(object, "phi")))
   phi <- matrix(phi, nrow=M, ncol=T, byrow=TRUE)
   p <- getP(object)
   p_array <- array(t(p), c(J, T, M))
   
   Z <- ZZ <- 0:1
-  post <- array(0, c(M, 2, 1))
+  post <- array(NA, c(M, 2, 1))
   colnames(post) <- Z
 
   for(i in 1:M) {
+    if(i %in% object@sitesRemoved) next
     f <- dbinom(Z, 1, psi[i])
     
     ghi <- rep(0, 2)
@@ -319,8 +254,8 @@ setMethod("get_fitting_function", "unmarkedFrameGOccu",
 setMethod("rebuild_call", "unmarkedFitGOccu", function(object){           
   cl <- object@call
   cl[["data"]] <- quote(object@data)
-  cl[["psiformula"]] <- object@formlist$psiformula
-  cl[["phiformula"]] <- object@formlist$phiformula
-  cl[["pformula"]] <- object@formlist$pformula
+  cl[["psiformula"]] <- object@formlist$psi
+  cl[["phiformula"]] <- object@formlist$phi
+  cl[["pformula"]] <- object@formlist$det
   cl
 })

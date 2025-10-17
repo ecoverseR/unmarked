@@ -8,7 +8,9 @@ distsamp <- function(formula, data,
 
     # Check arguments
     engine <- match.arg(engine)
-    if(any(sapply(split_formula(formula), has_random))) engine <- "TMB"
+    formulas <- split_formula(formula)
+    names(formulas) <- c("det", "state")
+    if(any(sapply(formulas, has_random))) engine <- "TMB"
     keyfun <- match.arg(keyfun)
     output <- match.arg(output)
     unitsOut <- match.arg(unitsOut)
@@ -16,14 +18,8 @@ distsamp <- function(formula, data,
     if(missing(starts)) starts <- NULL
 
     #Generate design matrix
-    designMats <- getDesign(data, formula)
-    X <- designMats$X; V <- designMats$V; y <- designMats$y
-    X.offset <- designMats$X.offset; V.offset <- designMats$V.offset
-    if(is.null(X.offset))
-        X.offset <- rep(0, nrow(X))
-    if(is.null(V.offset))
-        V.offset <- rep(0, nrow(V))
-
+    dm <- getDesign(data, formulas)
+    y <- dm$y
     M <- nrow(y)
     J <- ncol(y)
 
@@ -63,8 +59,8 @@ distsamp <- function(formula, data,
         kmsq = A <- A)
 
     # Set up parameters
-    lamParms <- colnames(X)
-    detParms <- colnames(V)
+    lamParms <- colnames(dm$X_state)
+    detParms <- colnames(dm$X_det)
     scaleParms <- character(0)
     nAP <- length(lamParms)
     nDP <- length(detParms)
@@ -77,6 +73,7 @@ distsamp <- function(formula, data,
       detParms <- character(0)
       detIdx <- numeric(0)
       starts_default <- rep(0, nAP)
+      nP <- nAP
     }
     if(keyfun=="exp"){
       starts_default[(nAP+1)] <- 0
@@ -97,8 +94,8 @@ distsamp <- function(formula, data,
     switch(keyfun,
     halfnorm = {
         nll <- function(param) {
-            sigma <- drop(exp(V %*% param[(nAP+1):nP] + V.offset))
-            lambda <- drop(exp(X %*% param[1:nAP] + X.offset))
+            sigma <- drop(exp(dm$X_det %*% param[(nAP+1):nP] + dm$offset_det))
+            lambda <- drop(exp(dm$X_state %*% param[1:nAP] + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             for(i in 1:M) {
@@ -128,8 +125,8 @@ distsamp <- function(formula, data,
             }},
     exp = {
         nll <- function(param) {
-            rate <- drop(exp(V %*% param[(nAP+1):nP] + V.offset))
-            lambda <- drop(exp(X %*% param[1:nAP] + X.offset))
+            rate <- drop(exp(dm$X_det %*% param[(nAP+1):nP] + dm$offset_det))
+            lambda <- drop(exp(dm$X_state %*% param[1:nAP] + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             for(i in 1:M) {
@@ -164,9 +161,9 @@ distsamp <- function(formula, data,
             }},
     hazard = {
         nll <- function(param) {
-            shape <- drop(exp(V %*% param[(nAP+1):(nP-1)] + V.offset))
+            shape <- drop(exp(dm$X_det %*% param[(nAP+1):(nP-1)] + dm$offset_det))
             scale <- drop(exp(param[nP]))
-            lambda <- drop(exp(X %*% param[1:nAP] + X.offset))
+            lambda <- drop(exp(dm$X_state %*% param[1:nAP] + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             for(i in 1:M) {
@@ -202,7 +199,7 @@ distsamp <- function(formula, data,
             }},
     uniform = {
         nll <- function(param) {
-            lambda <- drop(exp(X %*% param + X.offset))
+            lambda <- drop(exp(dm$X_state %*% param + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
             ll <- dpois(y, lambda * u, log=TRUE)
@@ -219,10 +216,10 @@ distsamp <- function(formula, data,
                 beta.sig <- param[(nAP+1):nP]
                 scale <- -99.0
             }
-            lambda <- drop(exp(X %*% beta.lam + X.offset))
+            lambda <- drop(exp(dm$X_state %*% beta.lam + dm$offset_state))
             if(identical(output, "density"))
                 lambda <- lambda * A
-            sigma <- drop(exp(V %*% beta.sig + V.offset))
+            sigma <- drop(exp(dm$X_det %*% beta.sig + dm$offset_det))
             nll_distsamp(
                   y, lambda, sigma, scale,
                   a, u, w, db,
@@ -258,16 +255,15 @@ distsamp <- function(formula, data,
 
       # Set up TMB input data
       if(output == "abund") A <- rep(1, length(A))
-      forms <- split_formula(formula)
-      inps <- get_ranef_inputs(forms, list(det=siteCovs(data), state=siteCovs(data)),
-                               list(V, X), designMats[c("Z_det","Z_state")])
+      inps <- get_ranef_inputs(formulas, list(det=siteCovs(data), state=siteCovs(data)),
+                               list(dm$X_det, dm$X_state), dm[c("Z_det","Z_state")])
 
       keyfun_type <- switch(keyfun, uniform={0}, halfnorm={1}, exp={2},
                             hazard={3})
       survey_type <- switch(survey, line={0}, point={1})
       tmb_dat <- c(list(y=y, survey_type=survey_type, keyfun_type=keyfun_type,
-                        A=A, db=db, a=a, w=w, u=u, offset_state=X.offset,
-                        offset_det=V.offset), inps$data)
+                        A=A, db=db, a=a, w=w, u=u, offset_state=dm$offset_state,
+                        offset_det=dm$offset_det), inps$data)
 
       tmb_param <- c(inps$pars, list(beta_scale=rep(0,0)))
 
@@ -295,8 +291,8 @@ distsamp <- function(formula, data,
       }
 
       # Organize random-effect estimates from TMB output
-      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", forms[[2]], siteCovs(data))
-      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", forms[[1]], siteCovs(data))
+      state_rand_info <- get_randvar_info(tmb_out$sdr, "state", formulas$state, siteCovs(data))
+      det_rand_info <- get_randvar_info(tmb_out$sdr, "det", formulas$det, siteCovs(data))
 
     }
 
@@ -322,8 +318,8 @@ distsamp <- function(formula, data,
     }
 
     dsfit <- new("unmarkedFitDS", fitType = "distsamp", call = match.call(),
-        opt = fm, formula = formula, data = data, keyfun=keyfun,
-        sitesRemoved = designMats$removed.sites, unitsOut=unitsOut,
+        opt = fm, formula = formula, formlist = formulas, data = data, keyfun=keyfun,
+        sitesRemoved = dm$removed.sites, unitsOut=unitsOut,
         estimates = estimateList, AIC = fmAIC, negLogLike = fm$value,
         nllFun = nll, output=output, TMB=tmb_mod)
     return(dsfit)

@@ -1,28 +1,12 @@
-
-setGeneric("crossVal", function(object,
-    method=c("Kfold","holdout","leaveOneOut"), folds=10, holdoutPct=0.25,
-    statistic=RMSE_MAE, ...) standardGeneric("crossVal"))
-
-setClass("unmarkedCrossVal",
-    representation(stats = "data.frame",
-                   summary = "data.frame",
-                   method = "character",
-                   folds = "numeric",
-                   holdoutPct = "numeric"),
-    validity=function(object){
-      errors <- character(0)
-      hp <- object@holdoutPct
-      if(hp<0|hp>1){
-        errors <- c(errors,"holdoutPct must be between 0 and 1")
-      }
-    }
-)
-
 #Constructor of crossVal objects
 setMethod("crossVal", "unmarkedFit",
           function(object, method=c("Kfold","holdout","leaveOneOut"),
                    folds=10, holdoutPct=0.25,
                    statistic=RMSE_MAE, parallel=FALSE, ncores, ...){
+
+  if(has_random(object)){
+    stop("crossVal doesn't work on models with random effects", call.=FALSE)
+  }
 
   method <- match.arg(method, c('Kfold','holdout','leaveOneOut'))
 
@@ -145,14 +129,6 @@ setMethod("show", "unmarkedCrossVal", function(object)
     if(i != length(st)) cat('\n')
   }
 })
-
-setClass("unmarkedCrossValList",
-    representation(stats_list="list",
-                   method = "character",
-                   folds="numeric",
-                   holdoutPct="numeric",
-                   sort="character")
-)
 
 #CrossVal list constructor
 setMethod("crossVal", "unmarkedFitList",

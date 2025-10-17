@@ -1,3 +1,24 @@
+# unmarked 1.5.1
+
+* Rewrite colext likelihood in TMB to improve speed and fix missing values bugs
+* Internal refactoring to facilitate long term maintenance. Saved model objects (e.g., in an .Rdata file) for certain model types will no longer work with some methods.
+* Informative error when a user attempts to use nested formula functions such as I(scale())
+* Better generation of random effects for simulated datasets
+* Fix deprecated arma::is_finite warnings from CRAN
+* Remove some deprecated simulate/power analysis functions
+* Minor bugfixes
+
+# unmarked 1.5.0
+
+* Add community occupancy model (occuComm)
+* Add hazard key function support to IDS
+* Large overhaul of unmarkedFit methods including getP, fitted, residuals, ranef, nonparboot, parboot, simulate etc. Most important change was to standardize missing value handling; sites with all missing values are no longer silently dropped in output 
+* Improve and standardize documentation for these methods
+* More tests for these methods
+* Use reformulas package instead of lme4 for random effects formula handling
+* Fix likelihood bug in goccu when primary periods were missing
+* Fix bug in occuMulti getP method
+
 # unmarked 1.4.3
 
 * Add integrated distance sampling model function (IDS)

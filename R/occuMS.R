@@ -19,9 +19,10 @@ occuMS <- function(detformulas, psiformulas, phiformulas=NULL, data,
 
   #Check formulas
   check_no_support(lapply(c(detformulas,psiformulas,phiformulas), as.formula))
+  formulas <- list(det = detformulas, transition = phiformulas, state = psiformulas)
 
   #Get design matrices and other info
-  gd <- getDesign(data,psiformulas,phiformulas,detformulas,parameterization)
+  gd <- getDesign(data, formulas, parameterization)
 
   y <- gd$y
   N <- nrow(y)
@@ -246,10 +247,8 @@ occuMS <- function(detformulas, psiformulas, phiformulas=NULL, data,
   }
 
   umfit <- new("unmarkedFitOccuMS", fitType = "occuMS", call = match.call(),
-                detformulas = detformulas, psiformulas = psiformulas,
-                phiformulas = phiformulas,
-                parameterization = parameterization,
-                formula = ~1, data = data,
+                formlist = formulas, parameterization = parameterization,
+                data = data,
                 sitesRemoved = gd$removed.sites,
                 estimates = estimateList, AIC = fmAIC, opt = fm,
                 negLogLike = fm$value, nllFun = nll_R)

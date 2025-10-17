@@ -1,10 +1,3 @@
-setClass("unmarkedFrameOccuComm",
-         representation(ylist = "list", speciesCovs="optionalList"),
-         contains = "unmarkedFrame")
-
-setClass("unmarkedFitOccuComm", contains="unmarkedFitOccu")
-
-
 unmarkedFrameOccuComm <- function(y, siteCovs=NULL, obsCovs=NULL, speciesCovs=NULL){
 
   if(is.array(y)){
@@ -98,67 +91,6 @@ setMethod("plot", c(x="unmarkedFrameOccuComm", y="missing"),
         scales=list(relation="free", x=list(labels=1:J)),
         colorkey=colorkey, strip=T, xlab=xlab, ylab=ylab,
         labels=names(x@ylist), ...)
-})
-
-#[ Methods for community occupancy frames
-setMethod("[", c("unmarkedFrameOccuComm", "numeric", "missing", "missing"),
-    function(x, i){
-  if(length(i) == 0) return(x)
-  M <- numSites(x)
-  J <- obsNum(x)
-  S <- length(x@ylist)
-
-  ylist <- lapply(x@ylist,function(x) x[i,,drop=F])
- 
-  siteCovs <- siteCovs(x)
-  if (!is.null(siteCovs)) {
-    siteCovs <- siteCovs(x)[i, , drop = FALSE]
-  }
-
-  obsCovs <- obsCovs(x)
-  if (!is.null(obsCovs)) {
-    .site <- rep(1:M, each = J)
-    oc <- lapply(i, function(ind){
-      obsCovs[.site==ind,,drop=FALSE]
-    })
-    obsCovs <- do.call(rbind, oc)
-  }
-
-  # Species covs
-  spc <- x@speciesCovs
-  if(!is.null(spc)){
-    # length S covs are unchanged
-    spc_sp <- sapply(spc, function(x) identical(length(x), S))
-    spc_sp <- spc[spc_sp]
-
-    # M x S covs
-    spc_site <- sapply(spc, function(x) identical(dim(x), c(M, S))) 
-    spc_site <- spc[spc_site]
-    if(length(spc_site) > 0){
-      spc_site <- lapply(spc_site, function(x){
-        x[i,,drop=FALSE]
-      })
-    }
-    # M x J x S covs
-    spc_obs <- sapply(spc, function(x) identical(dim(x), c(M, J, S)))
-    spc_obs <- spc[spc_obs]
-    if(length(spc_obs) > 0){
-      spc_obs <- lapply(spc_obs, function(x){
-        x[i,,,drop=FALSE]
-      })
-    }
-    new_spc <- c(spc_site, spc_obs, spc_sp)
-  } else {
-    new_spc <- NULL
-  }
-
-  umf <- x
-  umf@y <- ylist[[1]]
-  umf@ylist <- ylist
-  umf@siteCovs <- siteCovs
-  umf@obsCovs <- obsCovs
-  umf@speciesCovs <- new_spc
-  umf
 })
 
 process_multispecies_umf <- function(umf, interact_covs){
@@ -384,7 +316,6 @@ setMethod("ranef_internal", "unmarkedFitOccuComm", function(object){
   })
 })
 
-setGeneric("richness", function(object, ...) standardGeneric("richness"))
 setMethod("richness", "unmarkedFitOccuComm", 
           function(object, nsims=100, posterior=FALSE){
   S <- length(object@data@ylist)
@@ -406,52 +337,6 @@ setMethod("richness", "unmarkedFitOccuComm",
       samples=rich)
 })
 
-setMethod("predict_internal", "unmarkedFitOccuComm",
-  function(object, type, newdata, backTransform = TRUE, na.rm = TRUE,
-           appendData = FALSE, level=0.95, re.form=NULL, ...){
-
-  na.rm <- FALSE
-  S <- length(object@data@ylist)
-  M <- numSites(object@data)
-  J <- obsNum(object@data)
-  new_object <- object
-  newform <- multispeciesFormula(object@formula, object@data@speciesCovs)
-  new_object@formula <- newform$formula
-  new_object@data <- process_multispecies_umf(object@data, newform$covs)
-  new_object <- as(new_object, "unmarkedFitOccu")
-
-  if(missing(newdata)) newdata <- NULL
-  #if(!is.null(newdata)){
-  #  n <- nrow(newdata)
-  #  newdata <- newdata[rep(1:n, S),,drop=FALSE] # rep by species
-  #  newdata$species <- factor(rep(names(object@data@ylist), each = n),
-  #                            levels = names(object@data@ylist))
-  #}
-
-  pr <- predict(new_object, type=type, newdata=newdata, backTransform=backTransform,
-                na.rm=na.rm, appendData=appendData, level=level, re.form=re.form, ...)
-
-  if(!is.null(newdata)){ # if using newdata, return now
-    return(pr) 
-  }
-
-  #if(!is.null(newdata)){
-  #  inds <- split(1:nrow(pr), rep(1:length(object@data@ylist), each=n))
-  #} else if(type == "state"){
-  # Otherwise divide up by species
-  if(type == "state"){
-    inds <- split(1:nrow(pr), rep(1:length(object@data@ylist), each=M))
-  } else if(type == "det"){
-    inds <- split(1:nrow(pr), rep(1:length(object@data@ylist), each=M*J))
-  }
-  names(inds) <- names(object@data@ylist)
-  lapply(inds, function(x){ 
-         out <- pr[x,,drop=FALSE]
-         rownames(out) <- NULL
-         out
-  })
-})
-
 setMethod("getP_internal", "unmarkedFitOccuComm", function(object){
   M <- numSites(object@data)
   J <- obsNum(object@data)
@@ -462,26 +347,8 @@ setMethod("getP_internal", "unmarkedFitOccuComm", function(object){
   p
 })
 
-setMethod("fitted_internal", "unmarkedFitOccuComm", function(object){
-  state <- predict(object, type = "state", level=NULL, na.rm=FALSE)
-  p <- getP(object, na.rm = FALSE) # P(detection | presence)
-  fitted <- mapply(function(x, y){
-    x$Predicted * y
-  }, x = state, y = p, SIMPLIFY=FALSE)
-  fitted
-})
-
 setMethod("getY_internal", "unmarkedFitOccuComm", function(object) {
             object@data@ylist
-})
-
-setMethod("residuals_internal", "unmarkedFitOccuComm", function(object) {
-  ylist <- getY(object)
-  fitlist <- fitted(object)
-
-  mapply(function(x, y){
-    x - y
-  }, x = ylist, y = fitlist, SIMPLIFY = FALSE)
 })
 
 setMethod("SSE", "unmarkedFitOccuComm", function(fit, ...){

@@ -2,7 +2,7 @@
 
 \alias{occuMS}
 
-\title{Fit Single-Season and Dynamic Multi-State Occupancy Models}
+\title{Fit Multi-State Occupancy Models (Nichols et al. 2007, MacKenzie et al. 2009)}
 
 \usage{occuMS(detformulas, psiformulas, phiformulas=NULL, data, 
     parameterization=c("multinomial","condbinom"),

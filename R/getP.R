@@ -1,12 +1,13 @@
-setGeneric("getP", function(object, ...) standardGeneric("getP"))
+# getP creates a matrix of estimated detection probabilities corresponding 
+# to the observed data. For example if the data are MxJ detection/non-detection,
+# the result will be an MxJ matrix of detection probabilities.
 
 # Exported method
+# This method applies to all unmarkedFit types, then internally
+# calls a specific method for each unmarkedFit type (minimizes documentation)
 setMethod("getP", "unmarkedFit", function(object, ...){
   getP_internal(object)
 })
-
-# Internal method
-setGeneric("getP_internal", function(object) standardGeneric("getP_internal"))
 
 setMethod("getP_internal", "unmarkedFit", function(object){
   M <- numSites(object@data)

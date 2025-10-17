@@ -51,16 +51,18 @@ umf <- unmarkedFrameOccu(y=crossbill[,11:13],
 ## Call:
 ## occu(formula = ~1 ~ elev, data = umf)
 ## 
-## Occupancy:
+## Occupancy (logit-scale):
 ##             Estimate    SE     z  P(>|z|)
 ## (Intercept)   -1.223 0.168 -7.27 3.61e-13
 ## elev           0.594 0.166  3.59 3.35e-04
 ## 
-## Detection:
+## Detection (logit-scale):
 ##  Estimate    SE    z P(>|z|)
 ##     0.326 0.186 1.75  0.0798
 ## 
-## AIC: 480.8533
+## AIC: 480.8533 
+## Number of sites: 260
+## ID of sites removed due to NA: 7 14 34 36 43 187 202
 ```
 
 ## Wald tests
@@ -287,7 +289,7 @@ pa400
 ```
 
 ```
-## Model: test
+## Model: occu
 ## Sites: 400
 ## Primary Periods: 1
 ## Occasions: 8
@@ -331,7 +333,7 @@ pa50
 ```
 
 ```
-## Model: test
+## Model: occu
 ## Sites: 50
 ## Primary Periods: 1
 ## Occasions: 8
@@ -384,7 +386,7 @@ pl
 ```
 
 ```
-## Model: test 
+## Model: occu 
 ## Number of sites (M):           50, 100, 200, 300, 400 
 ## Number of primary periods (T): 1, 1, 1, 1, 1 
 ## Number of occasions (J):       8, 8, 8, 8, 8 

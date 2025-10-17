@@ -4,29 +4,25 @@
 occuRN <- function(formula, data, K = 25, starts, method = "BFGS",
     se = TRUE, engine=c("C","R"), threads = 1, ...)
 {
-    check_no_support(split_formula(formula))
+  formulas <- split_formula(formula)
+  names(formulas) <- c("det", "state")
+  check_no_support(formulas)
 
-    if(!is(data, "unmarkedFrameOccu"))
-        stop("Data is not an unmarkedFrameOccu object.")
+  if(!is(data, "unmarkedFrameOccu"))
+    stop("Data is not an unmarkedFrameOccu object.")
 
-    engine <- match.arg(engine, c("C", "R"))
-    designMats <- getDesign(data, formula)
-    X <- designMats$X; V <- designMats$V; y <- designMats$y
-    X.offset <- designMats$X.offset; V.offset <- designMats$V.offset
-    if(is.null(X.offset))
-        X.offset <- rep(0, nrow(X))
-    if (is.null(V.offset))
-        V.offset <- rep(0, nrow(V))
-
+  engine <- match.arg(engine, c("C", "R"))
+  dm <- getDesign(data, formulas)
+  y <- dm$y
   y <- truncateToBinary(y)
 
   J <- ncol(y)
   M <- nrow(y)
 
-  occParms <- colnames(X)
-  detParms <- colnames(V)
-  nDP <- ncol(V)
-  nOP <- ncol(X)
+  occParms <- colnames(dm$X_state)
+  detParms <- colnames(dm$X_det)
+  nDP <- ncol(dm$X_det)
+  nOP <- ncol(dm$X_state)
 
   nP <- nDP + nOP
   if(!missing(starts) && length(starts) != nP)
@@ -40,7 +36,7 @@ occuRN <- function(formula, data, K = 25, starts, method = "BFGS",
   {
 
     ## compute individual level detection probabilities
-    r.ij <- matrix(plogis(V %*% parms[(nOP + 1) : nP] + V.offset), M, J,
+    r.ij <- matrix(plogis(dm$X_det %*% parms[(nOP + 1) : nP] + dm$offset_det), M, J,
       byrow = TRUE)
 
     ## compute list of detection probabilities along N
@@ -59,7 +55,7 @@ occuRN <- function(formula, data, K = 25, starts, method = "BFGS",
     cp.in <- sapply(cp.ij.list, rowProds)
 
     ## compute P(N = n | lambda_i) along i
-    lambda.i <- exp(X %*% parms[1 : nOP] + X.offset)
+    lambda.i <- exp(dm$X_state %*% parms[1 : nOP] + dm$offset_state)
     lambda.in <- sapply(n, function(x) dpois(x, lambda.i))
 
     ## integrate over P(y_i | N = n) * P(N = n | lambda_i) wrt n
@@ -74,7 +70,7 @@ occuRN <- function(formula, data, K = 25, starts, method = "BFGS",
     n_param <- c(nOP, nDP)
     Kmin <- apply(y, 1, function(x) max(x, na.rm=TRUE))
     nll <- function(params){
-      nll_occuRN(params, n_param, y, X, V, X.offset, V.offset,
+      nll_occuRN(params, n_param, y, dm$X_state, dm$X_det, dm$offset_state, dm$offset_det,
                  K, Kmin, threads)
     }
   }
@@ -101,8 +97,8 @@ occuRN <- function(formula, data, K = 25, starts, method = "BFGS",
           det=detEstimates))
 
   umfit <- new("unmarkedFitOccuRN", fitType = "occuRN",
-      call = match.call(), formula = formula, data = data,
-      sitesRemoved = designMats$removed.sites, estimates = estimateList,
+      call = match.call(), formula = formula, formlist = formulas, data = data,
+      sitesRemoved = dm$removed.sites, estimates = estimateList,
       AIC = fmAIC, opt = fm, negLogLike = fm$value, nllFun = nll, K = K)
 
   return(umfit)
