@@ -59,7 +59,7 @@ export(csvToUMF, formatLong, formatWide, formatMult, formatDistData)
 
 # Misc
 export(gxhn, gxexp, gxhaz, dxhn, dxexp, dxhaz, drhn, drexp,
-    drhaz, grhn, grexp, grhaz, lambda2psi, SSE, vif, powerAnalysis)
+    drhaz, grhn, grexp, grhaz, lambda2psi, SSE, vif, powerAnalysis, getStarts)
 
 # Removed functions
 export(shinyPower)
