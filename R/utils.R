@@ -798,3 +798,20 @@ check_K_multinomial <- function(K, K_adjust = 0, y, T = 1){
   }
   Kout
 }
+
+# Return correct order of starts values for a line of code creating an unmarked model
+getStarts <- function(code){
+  inp <- substitute(code)
+  if(inherits(inp, "<-")){
+    inp <- inp[[3]]
+  }
+  inp$method <- "SANN"
+  inp$control <- list(maxit=0)
+  #out <- eval(inp)
+  out <- eval.parent(inp, n=2)
+  random <- FALSE
+  if(methods::.hasSlot(out, "TMB") && !is.null(out@TMB)){
+    return(out@TMB$par)
+  }
+  coef(out)
+}
