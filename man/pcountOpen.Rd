@@ -2,9 +2,8 @@
 \alias{pcountOpen}
 \title{Fit the open N-mixture models of Dail and Madsen (2011) and Hostetler and Chandler (2015)}
 \description{Fit the models of Dail and Madsen (2011) and Hostetler and
-Chandler (in press), which are
-generalized forms of the Royle (2004) N-mixture model for open
-populations.}
+  Chandler (2015), which are generalized forms of the Royle (2004)
+  N-mixture model for open populations.} 
 \usage{
 pcountOpen(lambdaformula, gammaformula, omegaformula, pformula,
   data, mixture = c("P", "NB", "ZIP"), K, dynamics=c("constant", "autoreg",
@@ -45,20 +44,22 @@ pcountOpen(lambdaformula, gammaformula, omegaformula, pformula,
   }
   \item{dynamics}{
     Character string describing the type of population
-    dynamics. "constant" indicates that there is no relationship between
-    omega and gamma. "autoreg" is an auto-regressive model in which
-    recruitment is modeled as gamma*N[i,t-1]. "notrend" model gamma as
-    lambda*(1-omega) such that there is no temporal trend. "trend" is
-    a model for exponential growth, N[i,t] = N[i,t-1]*gamma, where gamma
-    in this case is finite rate of increase (normally referred to as
-    lambda). "ricker" and "gompertz" are models for density-dependent
-    population growth.  "ricker" is the Ricker-logistic model, N[i,t] =
-    N[i,t-1]*exp(gamma*(1-N[i,t-1]/omega)), where gamma is the maximum
-    instantaneous population growth rate (normally referred to as r) and
-    omega is the equilibrium abundance (normally referred to as K).  "gompertz"
-    is a modified version of the Gompertz-logistic model, N[i,t] =
-    N[i,t-1]*exp(gamma*(1-log(N[i,t-1]+1)/log(omega+1))), where the
-    interpretations of gamma and omega are similar to in the Ricker model.
+    dynamics. "constant" indicates that the recruitment rate does not
+    depend on population size, E(recruits)=gamma. "autoreg" is an
+    auto-regressive model in which E(recruits)=gamma*N[i,t-1]. "notrend"
+    model gamma as lambda*(1-omega) such that there is no temporal
+    trend. "trend" is a model for geometric growth, N[i,t] =
+    N[i,t-1]*gamma, where gamma in this case is finite rate of increase
+    (normally referred to as lambda). "ricker" and "gompertz" are models
+    for density-dependent population growth.  "ricker" is the
+    Ricker-logistic model, N[i,t] = N[i,t-1]*exp(gamma*(1-N[i,t-1]/omega)),
+    where gamma is the maximum instantaneous population growth rate
+    (normally referred to as r) and omega is the equilibrium abundance
+    (normally referred to as K).  "gompertz" is a modified version of
+    the Gompertz-logistic model,
+    N[i,t] = N[i,t-1]*exp(gamma*(1-log(N[i,t-1]+1)/log(omega+1))), where
+    the interpretations of gamma and omega are similar to in the Ricker
+    model. 
   }
   \item{fix}{
     If "omega", omega is fixed at 1. If "gamma", gamma is fixed at 0.
@@ -90,11 +91,10 @@ closure assumption. The models include two or three additional parameters:
 gamma, either the recruitment rate (births and immigrations), the
 finite rate of increase, or the maximum instantaneous rate of increase;
 omega, either the apparent survival rate (deaths and emigrations) or the
-equilibrium abundance (carrying capacity); and iota, the number of immigrants
-per site and year. Estimates of
-population size at each time period can be derived from these
-parameters, and thus so can trend estimates. Or, trend can be estimated
-directly using dynamics="trend".
+equilibrium abundance (carrying capacity); and iota, the number of
+immigrants per site and year. Estimates of population size at each time
+period can be derived from these parameters, and thus so can trend
+estimates. Or, trend can be estimated directly using dynamics="trend".
 
 When immigration is set to FALSE (the default), iota is not modeled.
 When immigration is set to TRUE and dynamics is set to "autoreg", the model
@@ -116,8 +116,7 @@ the mean is \eqn{\lambda_i(1-\psi)}{lambda_i*(1-psi)}, where psi is the
 zero-inflation parameter.
 
 For "constant", "autoreg", or "notrend" dynamics, the latent abundance state
-following the initial sampling period arises
-from a
+following the initial sampling period arises from a
 Markovian process in which survivors are modeled as \eqn{S_{it} \sim
 Binomial(N_{it-1}, \omega_{it})}{S(i,t) ~ Binomial(N(i,t-1),
 omega(i,t))}, and recruits
