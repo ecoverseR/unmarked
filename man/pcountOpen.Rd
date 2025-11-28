@@ -6,27 +6,27 @@
   N-mixture model for open populations.} 
 \usage{
 pcountOpen(lambdaformula, gammaformula, omegaformula, pformula,
-  data, mixture = c("P", "NB", "ZIP"), K, dynamics=c("constant", "autoreg",
-  "notrend", "trend", "ricker", "gompertz"), fix=c("none", "gamma", "omega"),
-  starts, method = "BFGS", se = TRUE, immigration = FALSE,
-  iotaformula = ~1, ...)
+  data, mixture = c("P", "NB", "ZIP"), K,
+  dynamics=c("constant", "autoreg", "notrend", "trend", "ricker", "gompertz"),
+  fix=c("none", "gamma", "omega"), starts, method = "BFGS", se = TRUE,
+  immigration = FALSE, iotaformula = ~1, ...)
 }
 \arguments{
   \item{lambdaformula}{
-    Right-hand sided formula for initial abundance
+    Formula for initial abundance
   }
   \item{gammaformula}{
-    Right-hand sided formula for recruitment rate (when dynamics is "constant",
+    Formula for recruitment rate (when dynamics is "constant",
     "autoreg", or "notrend") or population growth rate (when dynamics is
-    "trend", "ricker", or "gompertz")
+    "trend", "ricker", or "gompertz"). See Details.
   }
   \item{omegaformula}{
-    Right-hand sided formula for apparent survival probability
+    Formula for apparent survival probability
     (when dynamics is "constant", "autoreg", or "notrend") or equilibrium
     abundance (when dynamics is "ricker" or "gompertz")
   }
   \item{pformula}{
-    Right-hand sided formula for detection probability
+    Formula for detection probability
   }
   \item{data}{
     An object of class \code{\link{unmarkedFramePCO}}. See details
@@ -44,22 +44,9 @@ pcountOpen(lambdaformula, gammaformula, omegaformula, pformula,
   }
   \item{dynamics}{
     Character string describing the type of population
-    dynamics. "constant" indicates that the recruitment rate does not
-    depend on population size, E(recruits)=gamma. "autoreg" is an
-    auto-regressive model in which E(recruits)=gamma*N[i,t-1]. "notrend"
-    model gamma as lambda*(1-omega) such that there is no temporal
-    trend. "trend" is a model for geometric growth, N[i,t] =
-    N[i,t-1]*gamma, where gamma in this case is finite rate of increase
-    (normally referred to as lambda). "ricker" and "gompertz" are models
-    for density-dependent population growth.  "ricker" is the
-    Ricker-logistic model, N[i,t] = N[i,t-1]*exp(gamma*(1-N[i,t-1]/omega)),
-    where gamma is the maximum instantaneous population growth rate
-    (normally referred to as r) and omega is the equilibrium abundance
-    (normally referred to as K).  "gompertz" is a modified version of
-    the Gompertz-logistic model,
-    N[i,t] = N[i,t-1]*exp(gamma*(1-log(N[i,t-1]+1)/log(omega+1))), where
-    the interpretations of gamma and omega are similar to in the Ricker
-    model. 
+    dynamics: "constant", "autoreg" "notrend", "trend", "ricker", or
+    "gompertz". See Details (and references) for an explanation of each
+    option. 
   }
   \item{fix}{
     If "omega", omega is fixed at 1. If "gamma", gamma is fixed at 0.
@@ -87,52 +74,73 @@ pcountOpen(lambdaformula, gammaformula, omegaformula, pformula,
 }
 \details{
 These models generalize the Royle (2004) N-mixture model by relaxing the
-closure assumption. The models include two or three additional parameters:
-gamma, either the recruitment rate (births and immigrations), the
-finite rate of increase, or the maximum instantaneous rate of increase;
-omega, either the apparent survival rate (deaths and emigrations) or the
-equilibrium abundance (carrying capacity); and iota, the number of
-immigrants per site and year. Estimates of population size at each time
-period can be derived from these parameters, and thus so can trend
-estimates. Or, trend can be estimated directly using dynamics="trend".
+closure assumption. A basic form of the model
+(\code{dynamics='constant'} and \code{mixture='P'}) treats initial
+abundance at site i as Poisson distributed: \eqn{N_{i,1} \sim
+  \text{Poisson}(\lambda)}{N(i,1) ~ Poisson(lambda)}. The latent
+abundance state following the initial sampling period arises from a
+Markovian process in which survivors are modeled as \eqn{S_{i,t} \sim
+  \text{Binomial}(N_{i,t-1}, \omega)}{S(i,t) ~ Binomial(N(i,t-1),
+  omega)}, and recruits follow \eqn{G_{i,t} \sim
+  \text{Poisson}(\gamma)}{G(i,t) ~ Poisson(gamma)}. Abundance is then
+\eqn{N_{i,t}=S_{i,t}+G_{i,t}}{N(i,t)=S(i,t)+G(i,t)}.  
 
-When immigration is set to FALSE (the default), iota is not modeled.
-When immigration is set to TRUE and dynamics is set to "autoreg", the model
-will separately estimate birth rate (gamma) and number of immigrants (iota).
-When immigration is set to TRUE and dynamics is set to "trend", "ricker", or
-"gompertz", the model will separately estimate local contributions to
-population growth (gamma and omega) and number of immigrants (iota).
+The detection process is modeled as binomial: \eqn{y_{i,j,t} \sim
+Binomial(N_{i,t}, p)}{y(i,j,t) ~ Binomial(N(i,t), p)}.
 
-The latent abundance distribution, \eqn{f(N | \mathbf{\theta})}{f(N |
-theta)} can be set as a Poisson, negative binomial, or zero-inflated
-Poisson random
+The latent abundance distribution during the initial time period can be
+set as a Poisson, negative binomial, or zero-inflated Poisson random
 variable, depending on the setting of the \code{mixture} argument,
 \code{mixture = "P"}, \code{mixture = "NB"}, \code{mixture = "ZIP"}
-respectively.  For the first two distributions, the mean of \eqn{N_i} is
-\eqn{\lambda_i}{lambda_i}.  If \eqn{N_i \sim NB}{N_i ~ NB}, then an
-additional parameter, \eqn{\alpha}{alpha}, describes dispersion (lower
-\eqn{\alpha}{alpha} implies higher variance). For the ZIP distribution,
-the mean is \eqn{\lambda_i(1-\psi)}{lambda_i*(1-psi)}, where psi is the
-zero-inflation parameter.
+respectively.  For the first two distributions, the mean of
+\eqn{N_{i,1}}{N(i,1)} is \eqn{\lambda}{lambda}.  In the negative
+binomial case, an additional parameter, \eqn{\alpha}{alpha}, describes
+dispersion (lower \eqn{\alpha}{alpha} implies higher variance). For the
+ZIP distribution, the mean is \eqn{\lambda(1-\psi)}{lambda*(1-psi)},
+where \eqn{\psi}{psi} is the zero-inflation parameter.
 
-For "constant", "autoreg", or "notrend" dynamics, the latent abundance state
-following the initial sampling period arises from a
-Markovian process in which survivors are modeled as \eqn{S_{it} \sim
-Binomial(N_{it-1}, \omega_{it})}{S(i,t) ~ Binomial(N(i,t-1),
-omega(i,t))}, and recruits
-follow \eqn{G_{it} \sim Poisson(\gamma_{it})}{G(i,t) ~
-  Poisson(gamma(i,t))}.
 Alternative population dynamics can be specified
 using the \code{dynamics} and \code{immigration} arguments.
+When \code{dynamics='autoreg'},
+\eqn{E(recruits)=\gamma N_{i,t-1}}{E(recruits)=gamma*N(i,t-1)} such that
+\eqn{\gamma}{gamma} is the per-capita recruitment rate. In the case of
+\code{dynamics='notrend'},
+\eqn{E(recruits)=\lambda (1-\omega)}{E(recruits)=lambda*(1-omega)}
+forcing an equilibrium condition (no temporal trend in abundance). 
 
-The detection process is modeled as binomial: \eqn{y_{ijt} \sim
-Binomial(N_{it}, p_{ijt})}{y(i,j,t) ~ Binomial(N(i,t), p(i,j,t))}.
+Alternative dynamics focus directly on the expected value of abundance 
+at the subsequent time period, avoiding the decomposition into survivors
+and recruits. Geometric growth can be specified by
+\code{dynamics='trend'}, with \eqn{N_{i,t} \sim
+  \text{Poisson}(\gamma N_{i,t-1})}{N(i,t) ~ Poisson(gamma*N(i,t-1)) },
+where \eqn{\gamma}{\gamma} in this case is finite rate of increase
+(normally referred to as lambda). Dynamics "ricker" and "gompertz" are
+stochastic models of density-dependent population growth. "ricker" is the
+Ricker-logistic model, \eqn{N_{i,t} \sim
+  \text{Poisson}(N_{i,t-1}\exp(\gamma (1-N_{i,t-1}/\omega)))}{N(i,t) ~
+  Poisson(N(i,t-1)*exp(gamma*(1-N(i,t-1)/omega)))} ,
+where \eqn{\gamma}{gamma} is the maximum instantaneous population
+growth rate (normally referred to as r) and \eqn{\omega}{omega} is
+the equilibrium abundance (normally referred to as K).  "gompertz"
+is a modified version of the Gompertz-logistic model,
+\eqn{N_{i,t} \sim
+  \text{Poisson}(N_{i,t-1}*exp(\gamma*(1-\log(N_{i,t-1}+1)/\log(\omega+1))))}{N(i,t) ~ N(i,t-1)*exp(gamma*(1-log(N(i,t-1)+1)/log(omega+1)))},
+where the interpretations of \eqn{\gamma}{gamma} and
+\eqn{\omega}{omega} are similar to the Ricker model. 
+
+When \code{immigration=TRUE}, \eqn{\iota}{iota} is the number of
+immigrants per site and year. 
+When immigration is set to TRUE and dynamics is set to "autoreg", the model
+will separately estimate birth rate \eqn{\gamma}{gamma} and number of
+immigrants \eqn{\iota}{iota}. When immigration is set to TRUE and
+dynamics is set to "trend", "ricker", or "gompertz", the model will
+separately estimate local contributions to 
+population growth (\eqn{\gamma}{gamma} and \eqn{\omega}{omega}) and
+number of immigrants (\eqn{\iota}{iota}). 
 
 \eqn{\lambda_i}{lambda_i}, \eqn{\gamma_{it}}{gamma_it}, and
-\eqn{\iota_{it}}{iota_it} are modeled 
-using the the log link.
-\eqn{p_{ijt}}{p_ijt} is modeled using
-the logit link.
+\eqn{\iota_{it}}{iota_it} are modeled using the the log link.
+\eqn{p_{ijt}}{p_ijt} is modeled using the logit link.
 \eqn{\omega_{it}}{omega_it} is either modeled using the logit link (for
 "constant", "autoreg", or "notrend" dynamics) or the log link (for "ricker"
 or "gompertz" dynamics).  For "trend" dynamics, \eqn{\omega_{it}}{omega_it}
