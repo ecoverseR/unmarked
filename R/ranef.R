@@ -1038,7 +1038,7 @@ setMethod("predict", "unmarkedRanef", function(object, func, nsims=100, ...)
 {
 
   ps <- posteriorSamples(object, nsims=nsims)@samples
-  s1 <- func(ps[,,1])
+  s1 <- func(ps[,,1], ...)
   nm <- names(s1)
   row_nm <- rownames(s1)
   col_nm <- colnames(s1)
@@ -1049,7 +1049,7 @@ setMethod("predict", "unmarkedRanef", function(object, func, nsims=100, ...)
     out_dim <- c(dim(s1), nsims)
   }
 
-  param <- apply(ps, 3, func)
+  param <- apply(ps, 3, func, ...)
 
   out <- array(param, out_dim)
 
