@@ -56,7 +56,8 @@ unique options; see usage below.
     predict types.}
   \item{func}{A function to apply to bootstrapped \code{unmarkedRanef} samples;
     see details.}
-  \item{...}{Other arguments, currently ignored} 
+  \item{...}{Other arguments. These are ignored except for the \code{ranef}
+    method, where they are additional arguments to \code{func}.} 
 }
 
 \value{For most methods, a \code{data.frame} with four columns: the
@@ -71,7 +72,7 @@ the empirical Bayes posterior predictive distribution for functions of the
 random variables (latent abundance or occurrence).
 
 In addition to the output object from \code{ranef}, you must also supply a 
-custom function to argument \code{func}. The function must take as input a matrix
+custom function to argument \code{func}. The function must take as its first argument a matrix
 with dimensions M x T, where M is the number of sites and T is the number of 
 primary periods (T=1 for single-season models). The output of this function should 
 be a vector or matrix containing the derived parameters of interest. 
