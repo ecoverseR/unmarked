@@ -178,3 +178,24 @@ test_that("occuPEN can handle offsets",{
 "p(Int)", "p(o1)")), tol=1e-5)
 
 })
+
+test_that("occuPEN MPLE works with missing values in y", {
+  # issue #54 thanks @RaphBnrd
+  y <- data.frame(matrix(c(
+    0, 1, 0, 0, 1, 1,
+    0, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 0, 0,
+    1, 1, 0, 1, 0, NA
+  ), nrow=4, byrow=TRUE))
+
+  siteCovs <- data.frame(x = c(-1, 1, -1, -1))
+
+  umf <- unmarkedFrameOccu(
+    y = y, siteCovs = siteCovs, obsCovs = NULL
+  )
+
+  formula <- ~1 ~ x
+
+  mod <- expect_warning(occuPEN(formula, data=umf, pen.type="MPLE"))
+  expect_is(mod, "unmarkedFitOccuPEN")
+})
