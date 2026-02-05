@@ -17,7 +17,7 @@ get_base_newdata <- function(object, type){
     } else if(is.factor(x)){
       return(factor(levels(x)[1], levels=levels(x)))
     }  else {
-      stop("Unknown column type")
+      return(NA)
     }
   })
   as.data.frame(out)
