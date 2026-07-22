@@ -30,6 +30,10 @@ unmarkedFrameGDR <- function(yDistance, yRemoval, numPrimary=1,
     stop("Some sites/primary periods do not have the same number of distance and removal observations", call.=FALSE)
   }
 
+  siteCovs <- drop_df_classes(siteCovs)
+  yearlySiteCovs <- covsToDF(yearlySiteCovs, "yearlySiteCovs", numPrimary, M)
+  obsCovs <- covsToDF(obsCovs, "obsCovs", ncol(yRemoval), M) 
+
   umf <- new("unmarkedFrameGDR", y=yRemoval, yDistance=yDistance,
              yRemoval=yRemoval, numPrimary=numPrimary, siteCovs=siteCovs,
              obsCovs=obsCovs, yearlySiteCovs=yearlySiteCovs, survey="point",

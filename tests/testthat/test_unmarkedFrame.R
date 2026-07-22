@@ -290,3 +290,23 @@ test_that("covsToDF", {
                df_cl)
   expect_error(covsToDF(cl, "obsCovs", 2, 3))
 })
+
+test_that("extra data frame classes are dropped", {
+  M <- 10
+  J <- 3
+  y <- matrix(rbinom(J * M, 1, 0.5), M, J)
+  siteCovs <- data.frame(a = rnorm(M), b = factor(gl(2,5)))
+  obsCovs <- data.frame(x = rnorm(M*J))
+
+  siteCovs2 <- siteCovs
+  class(siteCovs2) <- c("test", "data.frame")
+  umf <- expect_warning(unmarkedFrameOccu(y, siteCovs = siteCovs2),
+                        "Input data frame")
+  expect_is(umf@siteCovs, 'data.frame')
+
+  obsCovs2 <- obsCovs
+  class(obsCovs2) <- c("test", "data.frame")
+  umf <- expect_warning(unmarkedFrameOccu(y, obsCovs = obsCovs2),
+                        "Input data frame")
+  expect_is(umf@obsCovs, 'data.frame')
+})
