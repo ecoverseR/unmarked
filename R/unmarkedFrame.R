@@ -27,7 +27,9 @@ covsToDF <- function(covs, name, obsNum, numSites){
 # Drop additional data frame classes for S4 compatability
 drop_df_classes <- function(df){
   if(is.null(df)) return(NULL)
-  stopifnot(inherits(df, "data.frame"))
+  if(!inherits(df, "data.frame")){
+    stop("Covariates must be data frames", call.=FALSE)
+  }
   if(!identical(class(df), "data.frame")){
     warning("Input data frame has additional classes; they will be dropped",
             call.=FALSE)
