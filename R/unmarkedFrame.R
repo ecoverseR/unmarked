@@ -4,6 +4,7 @@
 covsToDF <- function(covs, name, obsNum, numSites){
   if(is.null(covs)) return(covs)
   if(inherits(covs, "data.frame")){
+    covs <- drop_df_classes(covs)
     if(nrow(covs) != (obsNum * numSites)){
       stop("Incorrect number of rows in ", name, " data frame", call.=FALSE)
     }
@@ -23,6 +24,19 @@ covsToDF <- function(covs, name, obsNum, numSites){
   data.frame(lapply(covs, function(x) as.vector(t(x))))
 }
 
+# Drop additional data frame classes for S4 compatability
+drop_df_classes <- function(df){
+  if(is.null(df)) return(NULL)
+  if(!inherits(df, "data.frame")){
+    stop("Covariates must be data frames", call.=FALSE)
+  }
+  if(!identical(class(df), "data.frame")){
+    warning("Input data frame has additional classes; they will be dropped",
+            call.=FALSE)
+  }
+  as.data.frame(df)
+}
+
 # Constructor for unmarkedFrames.
 unmarkedFrame <- function(y, siteCovs = NULL, obsCovs = NULL, obsToY) {
     if(!missing(obsToY)){
@@ -35,6 +49,7 @@ unmarkedFrame <- function(y, siteCovs = NULL, obsCovs = NULL, obsToY) {
       obsNum <- ncol(obsCovs[[1]]) #??
 
     obsCovs <- covsToDF(obsCovs, "obsCovs", obsNum, nrow(y))
+    siteCovs <- drop_df_classes(siteCovs)
 
     if(inherits(y, c("data.frame", "cast_matrix")))
         y <- as.matrix(y)
@@ -59,6 +74,7 @@ unmarkedFrameDS <- function(y, siteCovs = NULL, dist.breaks, tlength,
     if(length(dist.breaks) != ncol(y)+1){
       stop(paste("dist.breaks should have",ncol(y)+1,"values"))
     }
+    siteCovs <- drop_df_classes(siteCovs)
     umfds <- new("unmarkedFrameDS", y = y, obsCovs = NULL,
                  siteCovs = siteCovs, dist.breaks = dist.breaks,
                  tlength = tlength, survey = survey, unitsIn = unitsIn,
@@ -110,6 +126,7 @@ unmarkedFrameOccuMulti <- function(y, siteCovs = NULL, obsCovs = NULL,
     names(ylist) <- paste('sp',1:length(ylist),sep='')
 
   obsCovs <- covsToDF(obsCovs, "obsCovs", J, nrow(y))
+  siteCovs <- drop_df_classes(siteCovs)
 
   #f design matrix guide
   S <- length(ylist)
