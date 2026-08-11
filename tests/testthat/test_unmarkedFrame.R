@@ -32,6 +32,14 @@ test_that("unmarkedFrame can be constructed",{
   expect_equal(umf112@y[,1], umf112@y[,2])
   expect_equal(obsNum(umf112), 4)
   expect_equal(umf[,c(TRUE, FALSE, TRUE)], umf[,c(1,3)])
+
+  # head
+  humf <- head(umf)
+  expect_equal(numSites(humf), 6)
+  
+  # Make sure head works when < 6 sites
+  humf <- head(umf[1:5,])
+  expect_equal(numSites(humf), 5)
 })
 
 test_that("obsToY works", {
