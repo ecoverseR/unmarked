@@ -586,8 +586,8 @@ setMethod("simulate_internal", "unmarkedFitOccuFP",
   M <- nrow(p)
   J <- ncol(p)
   p <- as.vector(t(p))
-  fp <- as.vector(t(getFP(object)))
-  b <- as.vector(t(getB(object)))
+  fp <- as.vector(t(getFP(object, na.rm = FALSE)))
+  b <- as.vector(t(getB(object, na.rm = FALSE)))
             
   simList <- list()
   for(i in 1:nsim) {
