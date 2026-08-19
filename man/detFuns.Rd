@@ -4,6 +4,9 @@
 gxhn(x, sigma)
 gxexp(x, rate)
 gxhaz(x, shape, scale)
+grhn(r, sigma)
+grexp(r, rate)
+grhaz(r, shape, scale)
 
 dxhn(x, sigma)
 dxexp(x, rate)
