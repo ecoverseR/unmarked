@@ -1,7 +1,6 @@
 \name{unmarkedFitList-class}
 \Rdversion{1.1}
 \docType{class}
-\alias{modSel,unmarkedFitList-method}
 \alias{summary,unmarkedFitList-method}
 \alias{coef,unmarkedFitList-method}
 \alias{SE,unmarkedFitList-method}

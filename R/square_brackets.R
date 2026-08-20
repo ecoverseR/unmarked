@@ -395,5 +395,6 @@ process_period_index <- function(umf, j){
 
 setMethod("head", "unmarkedFrame", function(x, n) {
   if(missing(n)) n <- 6
+  n <- min(c(numSites(x), n))
   x[1:n,]
 })

@@ -32,6 +32,14 @@ test_that("unmarkedFrame can be constructed",{
   expect_equal(umf112@y[,1], umf112@y[,2])
   expect_equal(obsNum(umf112), 4)
   expect_equal(umf[,c(TRUE, FALSE, TRUE)], umf[,c(1,3)])
+
+  # head
+  humf <- head(umf)
+  expect_equal(numSites(humf), 6)
+  
+  # Make sure head works when < 6 sites
+  humf <- head(umf[1:5,])
+  expect_equal(numSites(humf), 5)
 })
 
 test_that("obsToY works", {
@@ -289,4 +297,24 @@ test_that("covsToDF", {
   expect_equal(covsToDF(cl, "obsCovs", 3, 2),
                df_cl)
   expect_error(covsToDF(cl, "obsCovs", 2, 3))
+})
+
+test_that("extra data frame classes are dropped", {
+  M <- 10
+  J <- 3
+  y <- matrix(rbinom(J * M, 1, 0.5), M, J)
+  siteCovs <- data.frame(a = rnorm(M), b = factor(gl(2,5)))
+  obsCovs <- data.frame(x = rnorm(M*J))
+
+  siteCovs2 <- siteCovs
+  class(siteCovs2) <- c("test", "data.frame")
+  umf <- expect_warning(unmarkedFrameOccu(y, siteCovs = siteCovs2),
+                        "Input data frame")
+  expect_is(umf@siteCovs, 'data.frame')
+
+  obsCovs2 <- obsCovs
+  class(obsCovs2) <- c("test", "data.frame")
+  umf <- expect_warning(unmarkedFrameOccu(y, obsCovs = obsCovs2),
+                        "Input data frame")
+  expect_is(umf@obsCovs, 'data.frame')
 })

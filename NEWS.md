@@ -1,3 +1,9 @@
+# unmarked 1.5.2
+
+* Add getStarts function
+* Handle data frames with extra classes in unmarkedFrame constructors
+* Bugfixes
+
 # unmarked 1.5.1
 
 * Rewrite colext likelihood in TMB to improve speed and fix missing values bugs

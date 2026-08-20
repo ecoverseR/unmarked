@@ -61,13 +61,13 @@ test_that("formatLong works correctly",{
   withdate <- formatLong(test, type = "unmarkedFrameOccu")
 
   expect_equal(withdate,
-              new("unmarkedFrameOccu", y = structure(c(1L, 0L, 1L, 1L), .Dim = c(2L, 2L)),
+              new("unmarkedFrameOccu", y = structure(c(1L, 0L, 1L, 1L), dim = c(2L, 2L)),
                   obsCovs = structure(list(JulianDate = structure(c(17262, 17267, 17262, 17267),
                                                                   class = "Date")),
                                       class = "data.frame",
                                       row.names = c(NA, -4L)),
                   siteCovs = NULL,
-                  obsToY = structure(c(1, 0, 0, 1), .Dim = c(2L, 2L))))
+                  obsToY = structure(c(1, 0, 0, 1), dim = c(2L, 2L))))
 
   test <- expand.grid(site = LETTERS[1:4], julian = c(13, 20, 26))
   test <- test[with(test, order(site, julian)), ]
@@ -85,19 +85,19 @@ test_that("formatLong works correctly",{
 
   expect_equal(withfac,
               new("unmarkedFrameOccu",
-                  y = structure(c(1L, 0L, 1L, 0L, 1L, 1L, 0L, 0L, 0L, 1L, 1L, 0L), .Dim = 4:3),
+                  y = structure(c(1L, 0L, 1L, 0L, 1L, 1L, 0L, 0L, 0L, 1L, 1L, 0L), dim = 4:3),
                   obsCovs = structure(list(ocov = c(1.51, -0.09, 2.02, -0.06, 1.3, 2.29, -1.39, -0.28,
                                                     -0.13, 0.64, -0.28, -2.66),
                                            obsfac = structure(c(1L, 1L, 1L, 1L, 2L, 2L, 2L,
                                                                 2L, 1L, 2L, 1L, 2L),
-                                                              .Label = c("A", "B"), class = "factor"),
+                                                              levels = c("A", "B"), class = "factor"),
                                            JulianDate = c(13, 20, 26, 13, 20, 26, 13, 20, 26, 13, 20, 26)),
                                       class = "data.frame", row.names = c(NA, -12L)),
                   siteCovs = structure(list(scov = c(2, 4, 6, 8),
                                             sitefac = structure(c(1L, 1L, 2L, 2L),
-                                                                .Label = c("0", "1"), class = "factor")),
+                                                                levels = c("0", "1"), class = "factor")),
                                        class = "data.frame", row.names = c(NA, -4L)),
-                  obsToY = structure(c(1, 0, 0, 0, 1, 0, 0, 0, 1), .Dim = c(3L, 3L))))
+                  obsToY = structure(c(1, 0, 0, 0, 1, 0, 0, 0, 1), dim = c(3L, 3L))))
 
   # Compare manual and automatic unmarkedPCount frames
   # Manual creation from help
@@ -223,27 +223,27 @@ test_that("formatMult works correctly",{
               new("unmarkedMultFrame",
                   numPrimary = 2L,
                   yearlySiteCovs = structure(list(ysfac = structure(c(1L, 1L, 1L, 2L, 1L, 2L, 1L, 2L),
-                                                                    .Label = c("0", "1"), class = "factor"),
+                                                                    levels = c("0", "1"), class = "factor"),
                                                   yscov = c(1.3, 6.5, 2.6, 7.8, 3.9, 9.1, 5.2, 10.4)),
                                              class = "data.frame", row.names = c(NA, -8L)),
                   y = structure(c(0L, 1L, 3L, 3L, 2L, 2L, 2L, 1L, 1L, 0L, 3L, 3L, 1L, 1L, 0L, 0L, 3L, 1L, 2L,
-                                  2L, 2L, 1L, 3L, 3L), .Dim = c(4L, 6L)),
+                                  2L, 2L, 1L, 3L, 3L), dim = c(4L, 6L)),
                   obsCovs = structure(list(visit = c(1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1,
                                                      2, 3, 1, 2, 3),
                                            obsfac = structure(c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L,
                                                                 2L, 1L, 2L, 1L, 1L, 2L, 1L,
-                                                                2L, 2L, 2L, 1L, 2L, 1L, 2L), .Label = c("A", "B"), class = "factor"),
+                                                                2L, 2L, 2L, 1L, 2L, 1L, 2L), levels = c("A", "B"), class = "factor"),
                                            ocov = c(0.28, -1.41, -0.31, 0.05, -0.53, 0.84, -0.95, 1.63, 0.87,
                                                     1.03, 1.41, 1.25, -0.32, 0.11, -0.45, -0.83, 0.17, 0.28,
                                                     -0.13, -1.86, -1.82, 0.11, 1.29, -0.31)),
                                       class = "data.frame", row.names = c(NA, -24L)),
                   siteCovs = structure(list(sitefac = structure(c(1L, 1L, 2L, 2L),
-                                                                .Label = c("0", "1"), class = "factor"),
+                                                                levels = c("0", "1"), class = "factor"),
                                             scov = c(2, 4, 6, 8)), class = "data.frame",
                                        row.names = c(NA, -4L)),
                   obsToY = structure(c(1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
                                        0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-                                       0, 0, 0, 0, 1), .Dim = c(6L, 6L))))
+                                       0, 0, 0, 0, 1), dim = c(6L, 6L))))
 })
 
 test_that("csvToUMF function works",{

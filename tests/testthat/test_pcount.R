@@ -41,7 +41,7 @@ test_that("pcount can fit simple models",{
   umf <- unmarkedFramePCount(y = y, siteCovs = siteCovs, obsCovs = obsCovs)
   fm <- pcount(~ o1 ~ offset(x), data = umf, K=30)
   expect_equivalent(coef(fm), structure(c(-0.78814924, 2.62569034, -0.02578801),
-      .Names = c("lam(Int)", "p(Int)", "p(o1)")), tol = 1e-5)
+      names = c("lam(Int)", "p(Int)", "p(o1)")), tol = 1e-5)
 
   y <- matrix(c(
       8,7,7,8,

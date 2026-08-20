@@ -484,16 +484,23 @@ setMethod("getB", "unmarkedFitOccuFP", function(object, na.rm = TRUE)
   y <- designMats$y
   M <- nrow(y)
   J <- ncol(y)
-  type = object@type
-  if (type[3]!=0){
-    bpars <- coef(object, type = "b")
-  b <- plogis(designMats$X_b %*% bpars + designMats$offset_b)
+  type <- object@type
+  # Make b matrix of all 0s
+  b_out <- matrix(0, M, J)
+  # If no type 3 data, return matrix of 0s
+  if (type[3] == 0){
+    return(b_out)
+  }
+  # Calculate b for all occasions
+  bpars <- coef(object, type = "b")
+  b <- plogis(designMats$X_b %*% bpars + designMats$offset_b)  
   b <- matrix(b, M, J, byrow = TRUE)
-  }
-  if (type[3]==0){
-    b <- matrix(0, M, J)
-  }
-  return(b)
+  # Identify type 3 occasions
+  st <- sum(type[1:2]) + 1
+  en <- st + type[3] - 1
+  # Insert b values for only type 3 occasions; remainder stay 0
+  b_out[,st:en] <- b[,st:en]
+  b_out
 })
 
 #Y extractors for unmarkedFit objects

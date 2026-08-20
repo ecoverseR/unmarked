@@ -20,6 +20,7 @@
   unmarkedFrameGDS(y, siteCovs, numPrimary, yearlySiteCovs, dist.breaks,
     survey, unitsIn, tlength)
   unmarkedFrameGPC(y, siteCovs, obsCovs, numPrimary, yearlySiteCovs)
+  unmarkedFrameGOccu(y, siteCovs=NULL, obsCovs=NULL, numPrimary, yearlySiteCovs=NULL)
 }
 
 

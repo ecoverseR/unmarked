@@ -46,3 +46,35 @@ test_that("plotEffects works", {
   expect_equal(nrow(dat), 5)
 
 })
+
+test_that("plotEffects works when there are non numeric/factor columns in covs", {
+
+  # #55 https://github.com/ecoverseR/unmarked/issues/55
+  data(frogs)
+  
+  # 1. Create a basic UMF and fit model 
+  pferUMF <- unmarkedFrameOccu(pfer.bin)
+  siteCovs(pferUMF) <- data.frame(sitevar1 = rnorm(numSites(pferUMF)))
+  fm1 <- occu(~ 1 ~ sitevar1, pferUMF)
+  
+  # This works as expected
+  expect_is(plotEffectsData(fm1, type = "state", covariate = "sitevar1"),
+            "data.frame")
+  
+  # 2. Add a Date column
+  # Note: 'date' is NOT used in the model formula
+  siteCovs(pferUMF)$date <- as.Date("2026-01-01")
+  fm2 <- occu(~ 1 ~ sitevar1, pferUMF)
+  
+  expect_is(plotEffectsData(fm2, type = "state", covariate = "sitevar1"),
+            "data.frame")
+  
+  # 3. Add a Logical column
+  siteCovs(pferUMF)$date <- NULL
+  siteCovs(pferUMF)$logic_col <- TRUE
+  fm3 <- occu(~ 1 ~ sitevar1, pferUMF)
+  
+  expect_is(plotEffectsData(fm3, type = "state", covariate = "sitevar1"),
+            "data.frame")
+
+})

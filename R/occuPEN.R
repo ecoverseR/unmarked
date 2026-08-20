@@ -21,8 +21,9 @@ computeMPLElambda = function(formula, data, knownOcc = numeric(0), starts, metho
   if(!missing(starts) && length(starts) != nP)
       stop(paste("The number of starting values should be", nP))
   if(missing(starts)) starts <- rep(0, nP)
-
-  LRparams = glm.fit(x=X_state,y=apply(y,1,max),family=binomial(),intercept=F,start=starts[1:nOP])
+  
+  ymax <- apply(y, 1, function(x) if(all(is.na(x))) NA else max(x, na.rm=TRUE))
+  LRparams = glm.fit(x=X_state,y=ymax,family=binomial(),intercept=F,start=starts[1:nOP])
   naiveOcc = mean(LRparams$fitted.values)
   occuOutMLE = occu(formula,data,knownOcc = knownOcc, starts = starts,
                  method = "BFGS", engine = engine, se = TRUE)
@@ -224,7 +225,8 @@ occuPEN <- function(formula, data, knownOcc = numeric(0), starts,
 
     ## compute logistic regression MPLE targets and lambda:
     if (pen.type=="MPLE") {
-      LRparams = glm.fit(x=X_state,y=apply(y,1,max),family=binomial(),intercept=F,start=starts[1:nOP])
+      ymax <- apply(y, 1, function(x) if(all(is.na(x))) NA else max(x, na.rm=TRUE))
+      LRparams = glm.fit(x=X_state,y=ymax,family=binomial(),intercept=F,start=starts[1:nOP])
       MPLElambda = computeMPLElambda(formula, data, knownOcc = numeric(0), starts, method = "BFGS", engine = engine)
       if (MPLElambda != lambda) warning("Supplied lambda does not match the computed value. Proceeding with the supplied lambda.")
     }

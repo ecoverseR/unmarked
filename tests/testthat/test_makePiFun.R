@@ -39,7 +39,7 @@ test_that("makeCrPiFun generates MRR pifun",{
 
   cp <- mrr(p)
   expect_equal(cp, structure(c(0.12, 0.18, 0.17, 0.08, 0.03, 0.02),
-                             .Dim = 2:3, .Dimnames = list(
+                             dim = 2:3, dimnames = list(
                               NULL, c("01", "10", "11"))))
 })
 
@@ -51,7 +51,7 @@ test_that("makeCrPiFunMb generates behavioral response pifun",{
   p <- matrix(c(0.2,0.15,0.1,0.2), nrow=2, byrow=T)
   cp <- mrr(p)
   expect_equal(cp, structure(c(0.16, 0.09, 0.17, 0.08, 0.03, 0.02),
-                             .Dim = 2:3, .Dimnames = list(
+                             dim = 2:3, dimnames = list(
                               NULL, c("01", "10", "11"))))
 
 })
@@ -64,6 +64,6 @@ test_that("makeCrPiFunMh generates individ hetero pifun",{
   cp <- mrr(p)
   expect_equal(cp, structure(c(0.16008585185222, 0.0906366734014539,
                                0.16008585185222,0.0906366734014539, 0.0413982898797996,
-                               0.010483669158271), .Dim = 2:3, .Dimnames= list(
+                               0.010483669158271), dim = 2:3, dimnames= list(
                                 NULL, c("01", "10", "11"))))
 })

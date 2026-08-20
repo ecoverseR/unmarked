@@ -165,4 +165,18 @@ test_that("occuFP certain detection/b model can be fit",{
     stateformula = ~ 1, data = umf2))
   expect_equal(m2@sitesRemoved, 2)
   expect_equal(m2@AIC, 1720.162, tol=1e-4)
+
+  # Make sure non-certain detection occasions have b = 0
+  b <- getB(m2, na.rm = FALSE)
+  expect_true(all(b[,1:3] == 0))
+  expect_true(all(b[,4:7] > 0))
+
+  # Make sure the data types by occasion in simulated datasets remain the same
+  # as in the original dataset
+  set.seed(1)
+  s <- simulate(m2, nsim=1)[[1]]
+  expect_equal(dim(s), c(nsites, nsurveys1+nsurveys2))
+  max_obs <- apply(s, 2, max)
+  expect_true(all(max_obs[1:3] == 1)) # no certain detections
+  expect_true(all(max_obs[4:7] == 2)) # some certain detections
 })

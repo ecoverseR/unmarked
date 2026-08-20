@@ -21,7 +21,7 @@ fm1 <- pcount.spHDS(~ -1 + I(dist^2) ~ Habitat, umf, K=20)
 expect_equivalent(
                    coef(fm1),
 structure(c(-0.0521147712416163, 0.952296442491614, -1.66812493149504
-), .Names = c("lam(Int)", "lam(Habitat)", "p(I(dist^2))"))
+), names = c("lam(Int)", "lam(Habitat)", "p(I(dist^2))"))
                     , tol=1e-5)
 
 expect_error(pcount.spHDS(~(1|dummy)~1,umf))

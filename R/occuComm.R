@@ -32,6 +32,7 @@ unmarkedFrameOccuComm <- function(y, siteCovs=NULL, obsCovs=NULL, speciesCovs=NU
   }
 
   obsCovs <- covsToDF(obsCovs, "obsCovs", ncol(y[[1]]), nrow(y[[1]]))
+  siteCovs <- drop_df_classes(siteCovs)
   new("unmarkedFrameOccuComm", y=y[[1]], ylist = y, siteCovs=siteCovs, 
       obsCovs=obsCovs, speciesCovs=speciesCovs, obsToY = diag(J))
 }

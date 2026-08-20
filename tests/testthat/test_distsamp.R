@@ -185,7 +185,7 @@ test_that("distsamp ranef method works",{
 test_that("distsamp line keyfunctions work",{
     y <- structure(c(7, 7, 12, 9, 9, 11, 9, 5, 7, 6, 25, 26, 30, 26, 23,
         24, 20, 33, 26, 32, 5, 3, 8, 7, 1, 4, 4, 7, 7, 6, 3, 1, 1, 4,
-        4, 4, 3, 6, 2, 3), .Dim = c(10L, 4L))
+        4, 4, 3, 6, 2, 3), dim = c(10L, 4L))
     umf <- unmarkedFrameDS(y = y, dist.breaks=c(0, 3, 15, 18, 20),
         survey="line", unitsIn="m", tlength=rep(100, nrow(y)))
 
@@ -248,7 +248,7 @@ test_that("distsamp line keyfunctions work",{
 test_that("distsamp point keyfunctions work",{
     y <- structure(c(1, 0, 0, 0, 0, 0, 3, 1, 1, 0, 16, 15, 18, 14, 22,
         24, 12, 20, 20, 21, 10, 9, 9, 5, 6, 6, 6, 9, 5, 6, 6, 6, 4, 2,
-        6, 3, 3, 3, 1, 4), .Dim = c(10L, 4L))
+        6, 3, 3, 3, 1, 4), dim = c(10L, 4L))
 
     umf <- unmarkedFrameDS(y = y, dist.breaks=c(0, 3, 15, 18, 20),
         survey="point", unitsIn="m", tlength=rep(100, 20))

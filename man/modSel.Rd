@@ -2,6 +2,11 @@
 \title{Model selection on a list of \code{unmarked} model fits}
 \description{Model selection results from an unmarkedFitList}
 \alias{modSel}
+\alias{modSel,unmarkedFitList-method}
+
+\usage{
+  \S4method{modSel}{unmarkedFitList}(object, nullmod = NULL)
+}
 
 \arguments{
 	\item{object}{an object of class "unmarkedFitList" created by the function
