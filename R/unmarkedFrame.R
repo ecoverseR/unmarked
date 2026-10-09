@@ -675,12 +675,67 @@ setMethod("show", "unmarkedFrameOccuTTD", function(object)
   print(df)
 })
 
+setMethod("show", "unmarkedFrameCT", function(object){
+  dinfo <- object@deployments
+  if(!is.null(object@deploymentCovs)){
+    dinfo <- cbind(dinfo, object@deploymentCovs)
+  }
+
+  cat("\nunmarkedFrameCT object\n\n")
+  cat("Deployments:\n")
+  print(truncate_df(dinfo))
+
+  cat("\nObservations:\n")
+  print(truncate_df(object@y))
+
+  if(!is.null(object@obsCovs)){
+    if(is.data.frame(object@obsCovs)){
+      cat("\nObservation covariates:\n")
+      print(truncate_df(object@obsCovs))
+    } else {
+      cat("\nObservation covariate list not shown\n")
+    }
+  }
+})
+
+truncate_df <- function(df){
+  stopifnot(is.data.frame(df))
+  if(nrow(df) < 6){
+    return(df)
+  }
+  n <- nrow(df)
+  rounded <- lapply(df, function(x){
+    if(is.numeric(x)) return(round(x, options()$digits))
+    x
+  })
+  as_char <- function(x){
+    if(inherits(x, "POSIXct")){
+      return(format(x, "%Y-%m-%d %H:%M:%S"))
+    }
+    as.character(x)
+  }
+  head_char <- data.frame(lapply(rounded, as_char), stringsAsFactors = FALSE)
+  tail_char <- data.frame(lapply(rounded, as_char), stringsAsFactors = FALSE)
+  divider <- lapply(head_char, function(x) "---")
+  divider <- as.data.frame(divider)
+  rbind(head_char[1:3,], divider, tail_char[(n-2):n,])
+}
+
+setMethod("head", "unmarkedFrameCT", function(x, ...){
+  show(x)
+})
+
+
 ############################ EXTRACTORS ##################################
 
 # Extractor for site level covariates
 setMethod("siteCovs", "unmarkedFrame", function(object) {
     return(object@siteCovs)
 })
+
+setMethod("siteCovs", "unmarkedFrameCT", function(object) object@deploymentCovs)
+
+setMethod("deploymentCovs", "unmarkedFrameCT", function(object) object@deploymentCovs)
 
 setMethod("yearlySiteCovs", "unmarkedMultFrame", function(object) {
     return(object@yearlySiteCovs)
@@ -701,12 +756,14 @@ setMethod("obsCovs", "unmarkedFrame", function(object, matrices = FALSE) {
     return(value)
 })
 
+setMethod("obsCovs", "unmarkedFrameCT", function(object) object@obsCovs)
+
 
 setMethod("obsNum", "unmarkedFrame", function(object) nrow(object@obsToY))
 
 
 setMethod("numSites", "unmarkedFrame", function(object) nrow(object@y))
-
+setMethod("numSites", "unmarkedFrameCT", function(object) nrow(object@deployments))
 
 setMethod("numY", "unmarkedFrame", function(object) ncol(object@y))
 
@@ -721,12 +778,32 @@ setReplaceMethod("obsCovs", "unmarkedFrame", function(object, value) {
     object
 })
 
+setReplaceMethod("obsCovs", "unmarkedFrameCT", function(object, value){
+  object@obsCovs <- value
+  valid <- validunmarkedFrameCT(object)
+  if(!identical(valid, TRUE)){
+    stop(paste(valid, collapse="\n"), call.=FALSE)
+  }
+  object
+})
 
 setReplaceMethod("siteCovs", "unmarkedFrame", function(object, value) {
     object@siteCovs <- as.data.frame(value)
     object
 })
 
+setReplaceMethod("siteCovs", "unmarkedFrameCT", function(object, value){
+  "deploymentCovs<-"(object, value)
+})
+
+setReplaceMethod("deploymentCovs", "unmarkedFrameCT", function(object, value){
+  object@deploymentCovs <- value
+  valid <- validunmarkedFrameCT(object)
+  if(!identical(valid, TRUE)){
+    stop(paste(valid, collapse="\n"), call.=FALSE)
+  }
+  object
+})
 
 setReplaceMethod("yearlySiteCovs", "unmarkedMultFrame",
     function(object, value) {
@@ -742,7 +819,7 @@ setReplaceMethod("obsToY", "unmarkedFrame", function(object, value) {
 
 setMethod("getY", "unmarkedFrame", function(object) object@y)
 setMethod("getY", "unmarkedFrameOccuMulti", function(object) object@ylist[[1]])
-
+setMethod("getY", "unmarkedFrameCT", function(object) object@y)
 
 # Extract the covariates used for a particular submodel
 # Used by predict and plotEffects
@@ -929,6 +1006,37 @@ setMethod("summary", "unmarkedFrameOccuTTD", function(object,...) {
 
 })
 
+setMethod("summary", "unmarkedFrameCT", function(object, ...){
+  cat("unmarkedFrameCT Object\n\n")
+  cat(nrow(object@deployments), "deployments\n")
+  dep_max <- max(object@deployments$endtime - object@deployments$starttime)
+  dep_max <- paste(as.numeric(dep_max), units(dep_max))
+  cat("Maximum deployment length:", dep_max,"\n")
+
+  dep_mean <- mean(object@deployments$endtime - object@deployments$starttime)
+  dep_mean <- paste(as.numeric(dep_mean), units(dep_mean))
+  cat("Mean deployment length:", dep_mean,"\n")
+
+  earliest <- format(min(object@deployments$starttime), "%Y-%m-%d %H:%M:%S")
+  cat("Earliest timestamp:", earliest, "\n")
+  latest <- format(max(object@deployments$endtime), "%Y-%m-%d %H:%M:%S")
+  cat("Latest timestamp:", latest, "\n")
+
+  dep_tab <- table(factor(object@y$deployment, levels=unique(object@deployments$deployment)))
+  cat("Deployments with at least one detection:", length(dep_tab), "\n\n")
+  cat("Tabulation of observations per deployment:")
+  print(table(as.matrix(dep_tab)))
+
+  if(!is.null(object@deploymentCovs)) {
+    cat("\nDeployment-level covariates:\n")
+    print(summary(object@deploymentCovs))
+  }
+  if(!is.null(object@obsCovs) && is.data.frame(object@obsCovs)) {
+    cat("\nObservation-level covariates:\n")
+    print(summary(object@obsCovs[,3:ncol(object@obsCovs)]))
+  }
+})
+
 
 ################################# PLOT METHODS ###########################
 # TODO:  come up with nice show/summary/plot methods for each data types.
@@ -987,6 +1095,28 @@ setMethod("plot", c("unmarkedFrameOccuTTD", y="missing"),
   y <- getY(x)
   y <- y[y<x@surveyLength]
   hist(y, xlab="Time to first detection", ylab="Frequency", main="", ...)
+})
+
+setMethod("plot", c("unmarkedFrameCT", y="missing"),
+  function(x, y, ...){
+  dep <- x@deployments
+  y <- x@y
+  rng <- c(min(dep$starttime), max(dep$endtime))
+  nsites <- nrow(dep)
+  full <- seq(rng[1], rng[2], length.out=100)
+
+  plot(full, rep(1, length(full)),  type='l', ylim = c(0.5, nsites+0.5),
+       col='gray90', yaxt='n', xlab="Time", ylab="Deployment")
+  axis(2, at=1:nsites, labels=rev(dep$deployment))
+  for (i in 1:nsites){
+    xi <- rev(1:nsites)[i]
+    segments(full[1], xi, full[100], xi, col='gray90')
+    segments(dep$starttime[i], xi, dep$endtime[i], xi, col='black')
+    dets <- y[y$deployment == dep$deployment[i],]
+    if(nrow(dets) > 0){
+      points(dets$obstime, rep(xi, nrow(dets)), col='red', cex=0.5, pch=19)
+    }
+  }
 })
 
 setMethod("hist", "unmarkedFrameDS", function(x, ...)

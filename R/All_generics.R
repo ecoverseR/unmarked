@@ -174,6 +174,14 @@ setGeneric("siteCovs", function(object,...) standardGeneric("siteCovs"))
 # Method in unmarkedFrame.R
 setGeneric("siteCovs<-", function(object, value) standardGeneric("siteCovs<-"))
 
+# Extract deployment covs from an unmarkedFrameCT (continuous time)
+# Method in unmarkedFrame.R
+setGeneric("deploymentCovs", function(object,...) standardGeneric("deploymentCovs"))
+
+# Assign value to deploymentCovs slot in an unmarkedFrameCT
+# Method in unmarkedFrame.R
+setGeneric("deploymentCovs<-", function(object, value) standardGeneric("deploymentCovs<-"))
+
 # Get smoothed values from an unmarkedFitColExt object
 # Method in unmarkedFit.R
 setGeneric("smoothed", function(object, mean=TRUE) standardGeneric("smoothed"))

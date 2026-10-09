@@ -41,7 +41,7 @@ exportMethods(backTransform, coef, confint, fitted, getData,
               "yearlySiteCovs<-", "[", smoothed, projected, nonparboot, logLik,
               ranef, bup, crossVal, posteriorSamples, sigma, randomTerms, 
               optimizePenalty, unmarkedPowerList, plotEffectsData, plotEffects,
-              getL, richness)
+              getL, richness, deploymentCovs, "deploymentCovs<-")
 
 S3method("print", "unmarkedPostSamples")
 
