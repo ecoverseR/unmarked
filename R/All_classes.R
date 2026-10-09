@@ -8,6 +8,7 @@ setClassUnion("optionalCharacter", c("character","NULL"))
 setClassUnion("optionalList", c("list","NULL"))
 setClassUnion("numericOrLogical", c("numeric", "logical"))
 setClassUnion("matrixOrVector", c("matrix","numeric"))
+setClassUnion("optionalFunctionList", c("function", "list","NULL"))
 
 # unmarkedFrame classes--------------------------------------------------------
 
@@ -222,6 +223,150 @@ setClass("unmarkedFrameMMO",
 # Open-pop N-mixture
 setClass("unmarkedFramePCO", contains = "unmarkedFrameDailMadsen")
 
+
+# Generic continuous time unmarkedFrame
+validunmarkedFrameCT <- function(object) {
+  errors <- character(0)
+
+  # Check deployments
+  dep <- object@deployments
+  if(! "deployment" %in% names(dep)){
+    errors <- c(errors, "No column named deployment in deployments.")
+  } else {
+    if(!is.character(dep$deployment)){
+      errors <- c(errors, "deployment column in deployments should be character vector.")
+    }
+  }
+  
+  if(! "starttime" %in% names(dep)){
+    errors <- c(errors, "No column named starttime in deployments.")
+  } else {
+    if(!inherits(dep$starttime, "POSIXct")){
+      errors <- c(errors, "starttime column should be class POSIXct.")
+    }
+    if(any(is.na(dep$starttime))){
+      errors <- c(errors, "no missing values in starttime allowed.")
+    }
+  }
+  if(! "endtime" %in% names(dep)){
+    errors <- c(errors, "No column named endtime in deployments.")
+  } else {
+    if(!inherits(dep$endtime, "POSIXct")){
+      errors <- c(errors, "endtime column should be class POSIXct.")
+    }
+    if(any(is.na(dep$endtime))){
+      errors <- c(errors, "no missing values in endtime allowed.")
+    }
+  }
+
+  # Check deploymentCovs
+  if(!is.null(object@deploymentCovs)){
+    if(nrow(object@deploymentCovs) != nrow(object@deployments)){
+      errors <- c(errors, "deployments and deploymentCovs don't have the same number of rows.")
+    }
+  }
+
+  # Check observations
+  y <- object@y
+  if(! "deployment" %in% names(y)){
+    errors <- c(errors, "No column named deployment in y.")
+  } else {
+    if(!is.character(y$deployment)){
+      errors <- c(errors, "deployment column in y should be character vector.")
+    }
+    if(!all(y$deployment %in% dep$deployment)){
+      errors <- c(errors, "not all deployments in y are found in the deployments data frame.")
+    }
+  }
+  if(! "obstime" %in% names(y)){
+    errors <- c(errors, "No column named obstime in y")
+  } else {
+    if(!inherits(y$obstime, "POSIXct")){
+      errors <- c(errors, "obstime column should be class POSIXct.")
+    }
+    if(any(is.na(y$obstime))){
+      errors <- c(errors, "no missing values in obstime allowed.")
+    }
+  }
+
+  # Check observation covariates
+  oc <- object@obsCovs
+  if(!is.null(oc)){
+    if(is.data.frame(oc)){
+      errors <- c(errors, check_ct_obsCovs_df(oc, dep))
+    } else if(is.list(oc)){
+      list_errors <- lapply(oc, check_ct_obsCovs_df, dep = dep)
+      errors <- c(errors, unlist(list_errors))
+    } else {
+      errors <- c(errors, "obsCovs must be a data frame or list of data frames.")
+    } 
+  }
+
+  # Check interpolation functions
+  fun <- object@interpolationFunction
+  if(!is.null(fun)){
+    if(is.list(fun)){
+      all_funs <- all(sapply(fun, is.function))
+      if(!all_funs){
+        errors <- c(errors, "not all elements of interpolationFunction list are functions.")
+      }
+    } else if(!is.function(fun)){
+      errors <- c(errors, "interpolationFunction is not a function or a list of functions.")
+    }
+  }
+
+  if(length(errors) == 0) return(TRUE)
+  errors
+}
+
+
+check_ct_obsCovs_df <- function(oc, dep){
+  errors <- character(0)
+  if(! "deployment" %in% names(oc)){
+    errors <- c(errors, "No column named deployment in obsCovs.")
+  } else {
+    if(!is.character(oc$deployment)){
+      errors <- c(errors, "deployment column in obsCovs should be character vector.")
+    }
+    if(!all(oc$deployment %in% dep$deployment)){
+      errors <- c(errors, "not all deployments in obsCovs are found in the deployments data frame.")
+    }
+    if(!all(dep$deployment %in% oc$deployment)){
+      errors <- c(errors, "not all deployments in deployments data frame are found in obsCovs.")
+    }
+  }
+  if(! "covtime" %in% names(oc)){
+    errors <- c(errors, "No column named covtime in obsCovs")
+  } else {
+    if(!inherits(oc$covtime, "POSIXct")){
+      errors <- c(errors, "covtime column should be class POSIXct.")
+    }
+    if(any(is.na(oc$covtime))){
+      errors <- c(errors, "no missing values in covtime allowed.")
+    }
+  }
+  covs <- oc[,! names(oc) %in% c("deployment", "covtime"), drop = FALSE]
+  if(ncol(covs) > 0){
+    if(any(is.na(covs))){
+      errors <- c(errors, "no missing values in covariates allowed.")
+    }
+  }
+  errors
+}
+
+setClass("unmarkedFrameCT",
+  representation(y = "data.frame",
+                 deployments = "data.frame",
+                 deploymentCovs = "optionalDataFrame", 
+                 obsCovs = "optionalList",
+                 interpolationFunction = "optionalFunctionList"),
+  validity = validunmarkedFrameCT
+)
+
+# CT occupancy frame
+setClass("unmarkedFrameOccuCT",
+  contains = "unmarkedFrameCT"
+)
 
 # unmarkedEstimate class-------------------------------------------------------
 

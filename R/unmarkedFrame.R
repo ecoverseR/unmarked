@@ -620,6 +620,19 @@ unmarkedFrameMMO <- function(y, siteCovs = NULL, obsCovs = NULL,
 }
 
 
+# unmarkedFrame constructors for continuous-time models
+# these do not (currently) inherit from the base unmarkedFrame given
+# how different they are;
+# they are their own independent class with many of the same methods
+
+# Constructor for continous time occupancy model
+unmarkedFrameOccuCT <- function(y, deployments, deploymentCovs = NULL, 
+                                obsCovs = NULL, interpolationFunction = NULL){
+  new("unmarkedFrameOccuCT", y = y, deployments = deployments, 
+      deploymentCovs = deploymentCovs, obsCovs = obsCovs, 
+      interpolationFunction = interpolationFunction)
+}
+
 
 ################ SHOW METHODS ############################################
 

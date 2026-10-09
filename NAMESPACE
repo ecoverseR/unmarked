@@ -52,7 +52,7 @@ export(fitList,
     unmarkedFramePCO, unmarkedFrameGDS, unmarkedFrameGPC, unmarkedFrameOccuMulti,
     unmarkedFrameOccuMS, unmarkedFrameOccuTTD, unmarkedFrameDSO, 
     unmarkedFrameMMO, unmarkedFrameGDR, unmarkedFrameGOccu,
-    unmarkedFrameOccuCOP, unmarkedFrameOccuComm)
+    unmarkedFrameOccuCOP, unmarkedFrameOccuComm, unmarkedFrameOccuCT)
 
 # Formatting
 export(csvToUMF, formatLong, formatWide, formatMult, formatDistData)
