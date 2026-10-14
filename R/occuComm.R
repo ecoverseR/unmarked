@@ -211,27 +211,37 @@ multispeciesFormula <- function(form, species_covs){
 
   nterm <- length(trms[!trms_S])
   bars <- ifelse(nterm == 1, "|", "||")
-  rand <- paste0("+ (", safeDeparse(rand_form[[2]]), " ", bars, " species)")
   
   barexp <- reformulas::findbars(sf[[1]])
-  if(!is.null(barexp)){
-    lhs <- lapply(barexp, function(x) x[[2]])
-    check_lhs <- sapply(lhs, function(x) x == 1)
-    if(any(!check_lhs)) stop("Only random intercepts allowed", call.=FALSE)
-    new_rhs <- lapply(barexp, function(x){
-      rhs <- safeDeparse(x[[3]])
-      covs_add_species <<- c(covs_add_species, rhs)
-      new_rhs <- paste0(rhs, "_species")
-      x[[3]] <- str2lang(new_rhs)
-      x
-    })
-    rand2 <- lapply(new_rhs, function(x){
-      paste0("(", safeDeparse(x), ")")
-    })
-    rand <- paste(rand, "+", paste(rand2, collapse="+"))
+
+
+  ## Don't modify formula if it is in the lme4 style
+  if(is.null(barexp)) { # Not lme4 style
+    rand <- paste0("+ (", safeDeparse(rand_form[[2]]), " ", bars, " species)")
+    sf[[1]] <- paste(safeDeparse(det_nobar), rand)
+  } else {              # lme4 style
+    ## TODO: add checks to user-supplied lme4-style formula
+    sf[[1]] <- safeDeparse(sf[[1]])
   }
 
-  sf[[1]] <- paste(safeDeparse(det_nobar), rand)
+  ## if(!is.null(barexp)){
+  ##   lhs <- lapply(barexp, function(x) x[[2]])
+  ##   check_lhs <- sapply(lhs, function(x) x == 1)
+  ##   if(any(!check_lhs)) stop("Only random intercepts allowed", call.=FALSE)
+  ##   new_rhs <- lapply(barexp, function(x){
+  ##     rhs <- safeDeparse(x[[3]])
+  ##     covs_add_species <<- c(covs_add_species, rhs)
+  ##     new_rhs <- paste0(rhs, "_species")
+  ##     x[[3]] <- str2lang(new_rhs)
+  ##     x
+  ##   })
+  ##   rand2 <- lapply(new_rhs, function(x){
+  ##     paste0("(", safeDeparse(x), ")")
+  ##   })
+  ##   rand <- paste(rand, "+", paste(rand2, collapse="+"))
+  ## }
+  ## sf[[1]] <- paste(safeDeparse(det_nobar), rand)
+
 
   # State formula
   state_nobar <- reformulas::nobars(sf[[2]])
@@ -259,24 +269,34 @@ multispeciesFormula <- function(form, species_covs){
   rand <- paste0("+ (", safeDeparse(rand_form[[2]]), " ", bars, " species)")
 
   barexp <- reformulas::findbars(sf[[2]])
-  if(!is.null(barexp)){
-    lhs <- lapply(barexp, function(x) x[[2]])
-    check_lhs <- sapply(lhs, function(x) x == 1)
-    if(any(!check_lhs)) stop("Only random intercepts allowed", call.=FALSE)
-    new_rhs <- lapply(barexp, function(x){
-      rhs <- safeDeparse(x[[3]])
-      covs_add_species <<- c(covs_add_species, rhs)
-      new_rhs <- paste0(rhs, "_species")
-      x[[3]] <- str2lang(new_rhs)
-      x
-    })
-    rand2 <- lapply(new_rhs, function(x){
-      paste0("(", safeDeparse(x), ")")
-    })
-    rand <- paste(rand, "+", paste(rand2, collapse="+"))
+
+  ## Don't modify formula if it is in the lme4 style
+  if(is.null(barexp)) { # Not lme4 style
+    rand <- paste0("+ (", safeDeparse(rand_form[[2]]), " ", bars, " species)")
+    sf[[2]] <- paste(safeDeparse(state_nobar), rand)
+  } else {              # lme4 style
+    ## TODO: add checks to user-supplied lme4-style formula
+    sf[[2]] <- safeDeparse(sf[[2]])
   }
 
-  sf[[2]] <- paste(safeDeparse(state_nobar), rand)
+  ## if(!is.null(barexp)){
+  ##   lhs <- lapply(barexp, function(x) x[[2]])
+  ##   check_lhs <- sapply(lhs, function(x) x == 1)
+  ##   if(any(!check_lhs)) stop("Only random intercepts allowed", call.=FALSE)
+  ##   new_rhs <- lapply(barexp, function(x){
+  ##     rhs <- safeDeparse(x[[3]])
+  ##     covs_add_species <<- c(covs_add_species, rhs)
+  ##     new_rhs <- paste0(rhs, "_species")
+  ##     x[[3]] <- str2lang(new_rhs)
+  ##     x
+  ##   })
+  ##   rand2 <- lapply(new_rhs, function(x){
+  ##     paste0("(", safeDeparse(x), ")")
+  ##   })
+  ##   rand <- paste(rand, "+", paste(rand2, collapse="+"))
+  ## }
+
+  ## sf[[2]] <- paste(safeDeparse(state_nobar), rand)
   
   list(formula = stats::as.formula(str2lang(paste0(sf[[1]], sf[[2]]))),
        covs = unique(covs_add_species))
