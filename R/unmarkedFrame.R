@@ -626,10 +626,10 @@ unmarkedFrameMMO <- function(y, siteCovs = NULL, obsCovs = NULL,
 # they are their own independent class with many of the same methods
 
 # Constructor for continous time occupancy model
-unmarkedFrameOccuCT <- function(y, deployments, deploymentCovs = NULL, 
+unmarkedFrameOccuCT <- function(y, deployments, siteCovs = NULL, deploymentCovs = NULL, 
                                 obsCovs = NULL, interpolationFunction = NULL){
   new("unmarkedFrameOccuCT", y = y, deployments = deployments, 
-      deploymentCovs = deploymentCovs, obsCovs = obsCovs, 
+      siteCovs = siteCovs, deploymentCovs = deploymentCovs, obsCovs = obsCovs, 
       interpolationFunction = interpolationFunction)
 }
 
@@ -677,6 +677,9 @@ setMethod("show", "unmarkedFrameOccuTTD", function(object)
 
 setMethod("show", "unmarkedFrameCT", function(object){
   dinfo <- object@deployments
+  if(!is.null(object@siteCovs)){
+    dinfo <- merge(dinfo, object@siteCovs, by = "site", all.x = TRUE, sort = FALSE)
+  }
   if(!is.null(object@deploymentCovs)){
     dinfo <- cbind(dinfo, object@deploymentCovs)
   }
@@ -733,7 +736,7 @@ setMethod("siteCovs", "unmarkedFrame", function(object) {
     return(object@siteCovs)
 })
 
-setMethod("siteCovs", "unmarkedFrameCT", function(object) object@deploymentCovs)
+setMethod("siteCovs", "unmarkedFrameCT", function(object) object@siteCovs)
 
 setMethod("deploymentCovs", "unmarkedFrameCT", function(object) object@deploymentCovs)
 
@@ -763,7 +766,9 @@ setMethod("obsNum", "unmarkedFrame", function(object) nrow(object@obsToY))
 
 
 setMethod("numSites", "unmarkedFrame", function(object) nrow(object@y))
-setMethod("numSites", "unmarkedFrameCT", function(object) nrow(object@deployments))
+setMethod("numSites", "unmarkedFrameCT", function(object){
+  length(unique(object@deployments$site))        
+})
 
 setMethod("numY", "unmarkedFrame", function(object) ncol(object@y))
 
@@ -793,7 +798,12 @@ setReplaceMethod("siteCovs", "unmarkedFrame", function(object, value) {
 })
 
 setReplaceMethod("siteCovs", "unmarkedFrameCT", function(object, value){
-  "deploymentCovs<-"(object, value)
+  object@siteCovs <- value
+  valid <- validunmarkedFrameCT(object)
+  if(!identical(valid, TRUE)){
+    stop(paste(valid, collapse="\n"), call.=FALSE)
+  }
+  object
 })
 
 setReplaceMethod("deploymentCovs", "unmarkedFrameCT", function(object, value){
@@ -1008,6 +1018,7 @@ setMethod("summary", "unmarkedFrameOccuTTD", function(object,...) {
 
 setMethod("summary", "unmarkedFrameCT", function(object, ...){
   cat("unmarkedFrameCT Object\n\n")
+  cat(numSites(object), "sites\n")
   cat(nrow(object@deployments), "deployments\n")
   dep_max <- max(object@deployments$endtime - object@deployments$starttime)
   dep_max <- paste(as.numeric(dep_max), units(dep_max))

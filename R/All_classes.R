@@ -237,6 +237,13 @@ validunmarkedFrameCT <- function(object) {
       errors <- c(errors, "deployment column in deployments should be character vector.")
     }
   }
+  if(! "site" %in% names(dep)){
+    errors <- c(errors, "No column named site in deployments.")
+  } else {
+    if(!is.character(dep$site)){
+      errors <- c(errors, "site column in deployments should be character vector.")
+    }
+  }
   
   if(! "starttime" %in% names(dep)){
     errors <- c(errors, "No column named starttime in deployments.")
@@ -258,6 +265,29 @@ validunmarkedFrameCT <- function(object) {
       errors <- c(errors, "no missing values in endtime allowed.")
     }
   }
+
+  # Check siteCovs
+  if(!is.null(object@siteCovs)){
+    sc <- object@siteCovs
+    if(! "site" %in% names(sc)){
+      errors <- c(errors, "No column named site in siteCovs")
+    } else {
+      if(!is.character(sc$site)){
+        errors <- c(errors, "site column in siteCovs should be character vector.")
+      }
+      if(any(duplicated(sc$site))){
+        errors <- c(errors, "There are duplicated site IDs in siteCovs.")
+      }
+    }
+
+    if(! all(dep$site %in% sc$site)){
+      errors <- c(errors, "Some sites in deployments are not in siteCovs.")
+    }
+    if(! all(sc$site %in% dep$site)){
+      errors <- c(errors, "Some sites in siteCovs are not in deployments.")
+    }
+  }
+
 
   # Check deploymentCovs
   if(!is.null(object@deploymentCovs)){
@@ -357,6 +387,7 @@ check_ct_obsCovs_df <- function(oc, dep){
 setClass("unmarkedFrameCT",
   representation(y = "data.frame",
                  deployments = "data.frame",
+                 siteCovs = "optionalDataFrame",
                  deploymentCovs = "optionalDataFrame", 
                  obsCovs = "optionalList",
                  interpolationFunction = "optionalFunctionList"),
