@@ -963,6 +963,78 @@ setMethod("getDesign", "unmarkedFrameOccuMulti",
 })
 
 
+## occuCT
+setMethod("getDesign", "unmarkedFrameCT",
+  function(umf, formulas, na.rm = TRUE, interval, ...){
+  
+  # Occupancy model matrix
+  X_state <- get_model_matrix(formulas$state, umf@siteCovs)
+  
+  # Data frames of interpolated observation covariates
+  df_int <- interpolate_covs_for_integration(umf, formulas$det, interval)
+  df_det <- interpolate_covs_for_y(umf, formulas$det)
+
+  # Add site IDs
+  df_int <- merge(df_int, umf@deployments[,c("site", "deployment")],
+                  by = "deployment", all.x = TRUE, sort = FALSE)
+  df_det <- merge(df_det, umf@deployments[,c("site", "deployment")],
+                  by = "deployment", all.x = TRUE, sort = FALSE)
+
+  # Add site covs to these data frames if required
+  if(!is.null(umf@siteCovs)){
+    sc_in_obs <- all.vars(formulas$det)
+    sc_in_obs <- sc_in_obs[sc_in_obs %in% names(umf@siteCovs)]
+    if(length(sc_in_obs) > 0){
+      sc <- umf@siteCovs[, c("site", sc_in_obs), drop = FALSE]
+      df_int <- merge(df_int, sc, all.x = TRUE, sort = FALSE)
+      df_det <- merge(df_det, sc, all.x = TRUE, sort = FALSE)
+    }
+  }
+
+  # Add deployment covs to data frames if required
+  if(!is.null(umf@deploymentCovs)){
+    dc_in_obs <- all.vars(formulas$det)
+    dc_in_obs <- dc_in_obs[dc_in_obs %in% names(umf@deploymentCovs)]
+    if(length(dc_in_obs) > 0){
+      dc <- umf@deploymentCovs[, dc_in_obs, drop = FALSE]
+      dc$deployment <- umf@deployments$deployment      
+      df_int <- merge(df_int, dc, all.x = TRUE, sort = FALSE)
+      df_det <- merge(df_det, dc, all.x = TRUE, sort = FALSE)
+    }
+  }
+  
+  # Model matrix for integration
+  X_int <- model.matrix(formulas$det, df_int)
+  # identify rows to deployments
+  dep_int <- deployment_inds(df_int, umf)
+
+  # Model matrix for observation data
+  X_det <- model.matrix(formulas$det, df_det)
+  # identify rows to deployments
+  dep_det <- deployment_inds(df_det, umf)
+
+  # Identify deployments to sites
+  sites <- unique(umf@deployments$site)
+  dep_state <- factor(umf@deployments$site, levels = sites)
+  dep_state <- as.numeric(dep_state)
+
+  # Detections per deployment
+  dep_n <- apply(dep_det, 1, function(x){
+    if(is.na(x[1])) return(0)
+    length(x[1]:x[2])
+  })
+
+  # Detections per site
+  state_n <- sapply(1:max(dep_state), function(i){
+    sum(dep_n[dep_state == i])
+  })
+
+  list(y = umf@y, X_state = X_state, X_det = X_det, X_int = X_int,
+       dep_state = dep_state, dep_det = dep_det, dep_int = dep_int,
+       state_n = state_n, dep_n = dep_n)
+})
+
+
 # Utility functions used in several methods------------------------------------
 
 # Convert NULL data frames to dummy data frames of proper dimension
