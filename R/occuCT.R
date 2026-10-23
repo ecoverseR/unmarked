@@ -48,12 +48,12 @@ occuCT <- function(formula, data, interval, starts, method = "BFGS",
                                 randomVarInfo=list()
                                )
 
-  det_est <- unmarkedEstimate(name = "Detection", short.name = "p",
+  det_est <- unmarkedEstimate(name = "Detection rate", short.name = "lambda",
                               estimates = ests[det_ind],
                               covMat = covMat[det_ind, det_ind, drop=FALSE],
                               fixed = 1:ncol(gd$X_det),
-                              invlink = "logistic",
-                              invlinkGrad = "logistic.grad",
+                              invlink = "exp",
+                              invlinkGrad = "exp",
                               randomVarInfo=list()
                              )
 
