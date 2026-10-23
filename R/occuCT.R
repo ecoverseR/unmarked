@@ -1,3 +1,70 @@
+occuCT <- function(formula, data, interval, starts, method = "BFGS",
+                   se = TRUE, ...) {
+
+  # Check arguments------------------------------------------------------------
+  if(!is(data, "unmarkedFrameOccuCT"))
+    stop("Data is not an unmarkedFrameOccuCT object.")
+
+  formulas <- split_formula(formula)
+  names(formulas) <- c("det", "state")
+
+  gd <- getDesign(data, formulas, interval = interval)
+  # Adjustments for TMB
+  gd$y <- NULL
+  gd$dep_state <- gd$dep_state - 1
+  gd$dep_det <- gd$dep_det - 1
+  gd$dep_det[,2] <- gd$dep_det[,2] - gd$dep_det[,1] + 1
+  gd$dep_int <- gd$dep_int - 1
+  gd$dep_int[,2] <- gd$dep_int[,2] - gd$dep_int[,1] + 1
+
+  # Parameter list
+  state_ind <- 1:ncol(gd$X_state)
+  det_ind <- 1:ncol(gd$X_det) + max(state_ind)
+  nP <- max(det_ind)
+  params <- list(beta_state = rep(0, length(state_ind)), 
+                 beta_det = rep(0, length(det_ind)))
+
+  # Create TMB object
+  tmb_mod <- TMB::MakeADFun(data = c(model = "tmb_occuCT", gd),
+                            parameters = params,
+                            DLL = "unmarked_TMBExports", silent = TRUE)
+
+  # Optimize TMB object
+  if(missing(starts) || is.null(starts)) starts <- tmb_mod$par
+  opt <- optim(starts, fn = tmb_mod$fn, gr = tmb_mod$gr, method = method,
+               hessian = se, ...)
+
+  covMat <- invertHessian(opt, nP, se)
+  ests <- opt$par
+  names(ests) <- c(colnames(gd$X_state), colnames(gd$X_det))
+  fmAIC <- 2 * opt$value + 2 * nP
+
+  state_est <- unmarkedEstimate(name = "Occupancy", short.name = "psi",
+                                estimates = ests[state_ind],
+                                covMat = covMat[state_ind, state_ind, drop=FALSE],
+                                fixed = 1:ncol(gd$X_state),
+                                invlink = "logistic",
+                                invlinkGrad = "logistic.grad",
+                                randomVarInfo=list()
+                               )
+
+  det_est <- unmarkedEstimate(name = "Detection", short.name = "p",
+                              estimates = ests[det_ind],
+                              covMat = covMat[det_ind, det_ind, drop=FALSE],
+                              fixed = 1:ncol(gd$X_det),
+                              invlink = "logistic",
+                              invlinkGrad = "logistic.grad",
+                              randomVarInfo=list()
+                             )
+
+  estimate_list <- unmarkedEstimateList(list(state=state_est, det=det_est))
+
+  new("unmarkedFitOccuCT", fitType = "occuCT", call = match.call(),
+      formlist=formulas, data = data, sitesRemoved = numeric(0),
+      estimates = estimate_list, AIC = fmAIC, opt = opt,
+      negLogLike = opt$value, nllFun = tmb_mod$fn, TMB=tmb_mod)
+}
+
 # Interpolation stuff----------------------------------------------------------
 
 linear_interpolation <- function(times, cov_times, cov_vals){

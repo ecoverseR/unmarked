@@ -394,6 +394,9 @@ setClass("unmarkedFrameCT",
   validity = validunmarkedFrameCT
 )
 
+# Merged class for use with unmarkedFit
+setClassUnion("eitherUnmarkedFrame", c("unmarkedFrame", "unmarkedFrameCT"))
+
 # CT occupancy frame
 setClass("unmarkedFrameOccuCT",
   contains = "unmarkedFrameCT"
@@ -452,7 +455,7 @@ setClass("unmarkedFit",
   representation(fitType = "character",
     call = "call",
     formlist = "list",
-    data = "unmarkedFrame",
+    data = "eitherUnmarkedFrame",
     sitesRemoved = "numeric",  # vector of indices of removed sites
     estimates = "unmarkedEstimateList",
     AIC = "numeric",
