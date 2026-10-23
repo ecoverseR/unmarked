@@ -499,6 +499,12 @@ setClass("unmarkedFitOccuCOP",
   contains = "unmarkedFit"
 )
 
+# Continuous-time occupancy model
+setClass("unmarkedFitOccuCT",
+  representation(interval = "numeric"),
+  contains = "unmarkedFit"
+)
+
 # False positive occupancy
 setClass("unmarkedFitOccuFP",
   representation(knownOcc = "logical", type = "numeric"),

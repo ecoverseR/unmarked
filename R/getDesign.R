@@ -1028,10 +1028,11 @@ setMethod("getDesign", "unmarkedFrameCT",
   state_n <- sapply(1:max(dep_state), function(i){
     sum(dep_n[dep_state == i])
   })
+  no_detects <- as.numeric(state_n == 0)
 
   list(y = umf@y, X_state = X_state, X_det = X_det, X_int = X_int,
        dep_state = dep_state, dep_det = dep_det, dep_int = dep_int,
-       state_n = state_n, dep_n = dep_n)
+       no_detects = no_detects, dep_n = dep_n, interval = interval)
 })
 
 
