@@ -62,7 +62,8 @@ occuCT <- function(formula, data, interval, starts, method = "BFGS",
   new("unmarkedFitOccuCT", fitType = "occuCT", call = match.call(),
       formlist=formulas, data = data, sitesRemoved = numeric(0),
       estimates = estimate_list, AIC = fmAIC, opt = opt,
-      negLogLike = opt$value, nllFun = tmb_mod$fn, TMB=tmb_mod)
+      negLogLike = opt$value, nllFun = tmb_mod$fn, TMB=tmb_mod, 
+      interval = interval)
 }
 
 # Interpolation stuff----------------------------------------------------------
