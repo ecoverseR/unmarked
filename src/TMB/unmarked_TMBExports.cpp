@@ -12,6 +12,7 @@
 #include "tmb_IDS.hpp"
 #include "tmb_goccu.hpp"
 #include "tmb_colext.hpp"
+#include "tmb_occuCT.hpp"
 
 template<class Type>
 Type objective_function<Type>::operator() () {
@@ -32,6 +33,8 @@ Type objective_function<Type>::operator() () {
     return tmb_goccu(this);
   } else if(model == "tmb_colext"){
     return tmb_colext(this);
+  } else if(model == "tmb_occuCT"){
+    return tmb_occuCT(this);
   }
   return 0;
 }
