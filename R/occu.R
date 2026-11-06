@@ -67,7 +67,7 @@ occu <- function(formula, data, knownOcc = numeric(0),
       cp <- (pvec^yvec) * ((1 - pvec)^(1 - yvec))
       cp[navec] <- 1 # so that NA's don't modify likelihood
       cpmat <- matrix(cp, M, J, byrow = TRUE) #
-      loglik <- log(rowProds(cpmat) * psi + nd * (1 - psi))
+      loglik <- log(rowProds(cpmat) * psi + nd * (1 - psi) + .Machine$double.xmin)
       -sum(loglik)
     }
   }
