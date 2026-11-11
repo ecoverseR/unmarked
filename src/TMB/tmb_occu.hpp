@@ -63,7 +63,7 @@ Type tmb_occu(objective_function<Type>* obj) {
       cp *= pow(p(pind), y(i,j)) * pow(1-p(pind), 1-y(i,j));
       pind += 1;
     }
-    loglik -= log(psi(i) * cp + (1-psi(i)) * no_detect(i));
+    loglik -= log(psi(i) * cp + (1-psi(i)) * no_detect(i) + DBL_MIN);
   }
 
   return loglik;

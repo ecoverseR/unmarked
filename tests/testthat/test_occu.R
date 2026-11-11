@@ -442,7 +442,7 @@ test_that("occu can handle random effects",{
   fmi <- occu(~1~cov1 + (1|site_id), umf, starts=c(10,0,0,0))
   expect_equivalent(fmi@TMB$par["beta_det"], 10)
   expect_error(occu(~1~cov1 + (1|site_id), umf, starts=rep(0,3)))
-  expect_error(occu(~1~cov1 + (1|site_id), umf, starts=c(100,0,0,0)))
+  expect_error(occu(~1~cov1 + (1|site_id), umf, starts=c(Inf,0,0,0)))
 
   # Check site covs as random effects in obs model
   fm <- occu(~(1|site_id)~1, umf)
