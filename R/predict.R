@@ -70,7 +70,7 @@ check_predict_arguments <- function(object, type, newdata){
   }
 
   # Check newdata class
-  if(!inherits(newdata, c("unmarkedFrame", "data.frame", "RasterLayer", "RasterStack", "SpatRaster"))){
+  if(!inherits(newdata, c("unmarkedFrame", "unmarkedFrameCT", "data.frame", "RasterLayer", "RasterStack", "SpatRaster"))){
     stop("newdata must be unmarkedFrame, data.frame, RasterLayer, RasterStack, or SpatRaster", call.=FALSE)
   }
   invisible(TRUE)
@@ -730,6 +730,88 @@ setMethod("predict", "unmarkedFitOccuMS",
   for (i in 1:P){
     out[[i]] <- data.frame(Predicted=pred[,i], SE=se[,i],
                            lower=lwr[,i], upper=upr[,i])
+  }
+
+  out
+})
+
+# occuCT-----------------------------------------------------------------------
+
+setMethod("predict", "unmarkedFitOccuCT",
+  function(object, type, newdata, backTransform = TRUE, na.rm = TRUE,
+           appendData = FALSE, level=0.95, ...){
+
+  formulas <- object@formlist
+
+  if(missing(newdata) || is.null(newdata)) newdata <- getData(object)
+
+  if(type == "state"){
+    formula <- formulas$state
+    orig_data <- siteCovs(getData(object))
+    if(is.null(sc)){
+      orig_data <- data.frame(.dummy=rep(1, numSites(getData(object))))
+    }
+  } else if(type == "det"){
+    formula <- formulas$det
+    orig_data <- interpolate_covs_for_y(getData(object), formulas$det)
+    # Add site IDs
+    orig_data <- merge(orig_data, object@data@deployments[,c("site", "deployment")],
+                       by = "deployment", all.x = TRUE, sort = FALSE)
+
+    # Add site covs if required
+    sc <- siteCovs(getData(object))
+    if(!is.null(sc)){
+      sc_in_obs <- all.vars(formulas$det)
+      sc_in_obs <- sc_in_obs[sc_in_obs %in% names(sc)]
+      if(length(sc_in_obs) > 0){
+        to_add <- sc[, c("site", sc_in_obs), drop = FALSE]
+        orig_data <- merge(orig_data, to_add, all.x = TRUE, sort = FALSE)
+      }
+    }
+
+    # Add deployment covs to if required
+    dc <- deploymentCovs(getData(object))
+    if(!is.null(dc)){
+      dc_in_obs <- all.vars(formulas$det)
+      dc_in_obs <- dc_in_obs[dc_in_obs %in% names(dc)]
+      if(length(dc_in_obs) > 0){
+        to_add <- dc[, dc_in_obs, drop = FALSE]
+        to_add$deployment <- dc$deployment      
+        orig_data <- merge(orig_data, to_add, all.x = TRUE, sort = FALSE)
+      }
+    }
+  }
+
+  is_raster <- FALSE
+  if(inherits(newdata, "unmarkedFrameCT")){
+    X <- get_model_matrix(formula, orig_data)
+    offset <- get_offset(formula, orig_data)
+  } else {
+    if(inherits(newdata, c("RasterLayer","RasterStack","SpatRaster"))){
+      is_raster <- TRUE
+      orig_raster <- newdata
+      check_vars <- all.vars(formula)
+      newdata <- newdata_from_raster(newdata, check_vars)
+    }
+    mm <- make_mod_matrix(formula, orig_data, newdata, re.form = NA)
+    X <- mm$X
+    offset <- mm$offset
+  }
+
+  out <- predict_by_chunk(object, type, level, X, offset,
+                          chunk_size = 70, 
+                          backTransform = backTransform, re.form = NA)
+
+  # Convert output to raster if newdata was raster
+  if(is_raster){
+    out <- raster_from_predict(out, orig_raster, appendData)
+  } else if(appendData){
+    # Append data if needed
+    if(inherits(newdata, "unmarkedFrameCT")){
+      out <- cbind(out, orig_data)
+    } else {
+      out <- cbind(out, newdata)
+    }
   }
 
   out
