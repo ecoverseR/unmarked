@@ -35,10 +35,6 @@ goccu <- function(psiformula, phiformula, pformula, data,
   missing_session <- t(apply(y_array, c(2,3), 
                            function(x) as.numeric(all(is.na(x)))))
 
-  # Create possible states in each T
-  alpha_potential <- as.matrix(expand.grid(rep(list(c(0, 1)), T)))
-  n_possible <- nrow(alpha_potential)
-
   # Known present at each site
   known_present <- rep(0, M)
   # Known available at each site and T
@@ -56,23 +52,9 @@ goccu <- function(psiformula, phiformula, pformula, data,
     }
   }
 
-  # Determine which configurations of available states should not be
-  # included in likelihood because relevant primary periods were missing
-  alpha_drop <- matrix(NA, M, nrow(alpha_potential))
-  for (i in 1:M){
-    dropped <- rep(0, nrow(alpha_potential))
-    for (j in 1:nrow(alpha_potential)){
-      check_drop <- alpha_potential[j,] * missing_session[i,]
-      if(sum(check_drop) > 0) dropped[j] <- 1
-    }
-    alpha_drop[i,] <- dropped
-  }
-
   # Bundle data for TMB
   dataList <- list(y=y, T=T, link=ifelse(linkPsi=='cloglog', 1, 0), 
                    X_psi=gd$X_psi, X_phi=gd$X_phi, X_det=gd$X_det,
-                   n_possible=n_possible,
-                   alpha_potential=alpha_potential, alpha_drop = alpha_drop,
                    known_present=known_present, known_available=known_available, 
                    missing_session=missing_session)
 
