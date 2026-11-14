@@ -75,10 +75,12 @@ occu <- function(formula, data, knownOcc = numeric(0),
   # Fit model with C++ and R engines-------------------------------------------
   if(engine %in% c("C", "R")){
     if(missing(starts)) starts <- rep(0, nP)
-    if(length(starts) != nP){
+    if(!is.list(starts)) starts <- list(starts)
+    if(any(sapply(starts, length) != nP)){
       stop(paste("The number of starting values should be", nP))
     }
-    fm <- optim(starts, nll, method = method, hessian = se, ...)
+    fits <- lapply(starts, optim, fn=nll, method=method, hessian=se, ...)
+    fm <- fits[[which.min(sapply(fits, `[[`, "value"))]]
     covMat <- invertHessian(fm, nP, se)
     ests <- fm$par
     tmb_mod <- NULL

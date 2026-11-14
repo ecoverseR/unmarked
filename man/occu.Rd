@@ -19,7 +19,8 @@
       \code{"logit"} for the standard occupancy model or \code{"cloglog"} 
       for the complimentary log-log link, which relates occupancy
       to site-level abundance. See details.}
-    \item{starts}{Vector of parameter starting values.}
+    \item{starts}{Vector of parameter starting values, or a list of candidate
+      starting value vectors.}
     \item{method}{Optimization method used by \code{\link{optim}}.}
     \item{se}{Logical specifying whether or not to compute standard
       errors.}
