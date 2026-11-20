@@ -68,46 +68,11 @@ occuCT <- function(formula, data, interval, starts, method = "BFGS",
 
 # Interpolation stuff----------------------------------------------------------
 
-linear_interpolation <- function(times, cov_times, cov_vals){
-  
+linear_interpolation <- function(times, cov_times, cov_vals) {
   stopifnot(length(cov_times) == length(cov_vals))
-
-  # Make sure times are sorted
-  times <- times[order(times)]
-
-  ord <- order(cov_times)
-  cov_times <- cov_times[ord]
-  cov_vals <- cov_vals[ord] 
-  
-  ind <- findInterval(times, cov_times)
-
-  time_s <- as.numeric(cov_times)
-  min_time <- min(time_s)
-  time_s <- time_s - min_time
-
-  tnum <- as.numeric(times) - min_time
-
-  out <- rep(NA, length(times))
-
-  keepindex <- pmatch(times, cov_times)
-  if(any(!is.na(keepindex))){
-    insert_idx <- which(!is.na(keepindex))
-    out[insert_idx] <- cov_vals[na.omit(keepindex)]
-  }
-  must_interp <- which(is.na(out))
-
-  if(length(must_interp) > 0){
-    interp_vals <- sapply(must_interp, function(i){
-      x0 <- time_s[ind[i]]
-      x1 <- time_s[ind[i]+1]
-      y0 <- cov_vals[ind[i]]
-      y1 <- cov_vals[ind[i]+1]
-      x <- tnum[i]
-      (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
-    })
-    out[must_interp] <- interp_vals
-  }
-  out
+  stats::approx(x = as.numeric(cov_times), y = cov_vals,
+                xout = sort(as.numeric(times)),
+                rule = 1, na.rm = FALSE)$y
 }
 
 interpolate_covs_for_integration <- function(umf, formula, interval){
