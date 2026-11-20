@@ -579,6 +579,73 @@ setMethod("simulate_internal", "unmarkedFitOccu",
 })
 
 
+setMethod("simulate_internal", "unmarkedFitOccuCT",
+  function(object, nsim = 1){
+  gd <- unmarked:::getDesign(getData(object), object@formlist, 
+                             interval = object@interval)
+
+  # Occupancy probability at sites
+  psi <- drop(plogis(gd$X_state %*% coef(object, "state")))
+
+  # lambda at each integration integration "knot" time
+  # one more value than the number of bins; the bin area
+  # is calculated using the "left edge" value of lambda
+  lam <- drop(exp(gd$X_int %*% coef(object, "det")))
+
+  # Number of deployments
+  ndeploy <- nrow(getData(object)@deployments)
+
+  # Simulate IPP for a deployment
+  # times = knot times, lambda = lambda values from above
+  sim_ipp_piecewise <- function(times, lambda){
+    stopifnot(length(times) == length(lambda))
+    nb <- length(times) - 1 # number of bins
+    # Drop final value as only the lambda value at start of each bin is used
+    lambda <- head(lambda, -1)
+  
+    # Simulate number of detections per bin
+    # at the moment diff(times) should be the constant interval
+    counts <- rpois(nb, lambda * diff(times))
+    # Bin/segment ID per count
+    seg <- rep(seq_len(nb), counts)
+    # Uniform random time value within the appropriate bin for each detection
+    # then sort the values
+    sort(runif(sum(counts), times[seg], times[seg + 1]))
+  }
+
+  # Iterate over number of simulations
+  lapply(1:nsim, function(s){
+    # True occupancy state
+    z <- rbinom(numSites(getData(object)), 1, psi)
+    # Simulate new observed data for simulation s
+    # Iterate over deployments
+    newy <- lapply(1:ndeploy, function(i){
+      # latent state for site where this deployment is located
+      zi <- z[gd$dep_state[i]]
+      # No detections if site is unoccupied
+      if(zi == 0) return(NULL)
+      # Recreate sequnce of time knot points
+      tmin <- as.numeric(object@data@deployments$starttime[i])
+      tmax <- as.numeric(object@data@deployments$endtime[i])
+      tint <- seq(tmin, tmax, by=object@interval)
+      # Subset lambda to just this deployment
+      lami <- lam[gd$dep_int[i,1]:gd$dep_int[i,2]]
+      # Simulate detections using function above
+      ss <- sim_ipp_piecewise(tint, lami)
+      if(length(ss) == 0) return(NULL)
+      # Convert raw times to POSIX
+      new_times <- as.POSIXct(ss)
+      # Re-create y structure
+      data.frame(site = object@data@deployments$site[i],
+                 deployment = object@data@deployments$deployment[i],
+                 time = ss,
+                 obstime = new_times)
+    })
+    # Bind together all deployments for simulation s
+    do.call(rbind, newy)
+  })
+})
+
 setMethod("simulate_internal", "unmarkedFitOccuFP",
   function(object, nsim){
   psi <- predict(object, type = "state", level = NULL, na.rm = FALSE)$Predicted

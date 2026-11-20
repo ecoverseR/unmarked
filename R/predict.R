@@ -745,6 +745,7 @@ setMethod("predict", "unmarkedFitOccuCT",
 
   if(missing(newdata) || is.null(newdata)) newdata <- getData(object)
 
+  sc <- siteCovs(getData(object))
   if(type == "state"){
     formula <- formulas$state
     orig_data <- siteCovs(getData(object))
@@ -759,7 +760,6 @@ setMethod("predict", "unmarkedFitOccuCT",
                        by = "deployment", all.x = TRUE, sort = FALSE)
 
     # Add site covs if required
-    sc <- siteCovs(getData(object))
     if(!is.null(sc)){
       sc_in_obs <- all.vars(formulas$det)
       sc_in_obs <- sc_in_obs[sc_in_obs %in% names(sc)]
