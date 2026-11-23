@@ -546,7 +546,10 @@ test_that("occu maps knownOcc to the correct sites", {
   expect_equal(coef(fm), coef(fmR), tol = 1e-5)
 
   # Error if knownOcc index exceeds number of sites
-  expect_error(occu(~1~x, umf, knownOcc = 31))
+  expect_error(occu(~1~x, umf, knownOcc = 31), "too large")
+
+  # crossVal doesn't work with knownOcc
+  expect_error(crossVal(fm), "doesn't support")
 })
 
 test_that("fitted() sets psi = 1 at the known-occupied site after site removal", {

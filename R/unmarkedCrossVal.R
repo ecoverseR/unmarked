@@ -7,6 +7,11 @@ setMethod("crossVal", "unmarkedFit",
   if(has_random(object)){
     stop("crossVal doesn't work on models with random effects", call.=FALSE)
   }
+  if(inherits(object, "unmarkedFitOccu")){
+    if(any(object@knownOcc)){
+      stop("crossVal doesn't support knownOcc sites in occu", call.=FALSE)
+    }
+  }
 
   method <- match.arg(method, c('Kfold','holdout','leaveOneOut'))
 
