@@ -14,9 +14,6 @@ occu <- function(formula, data, knownOcc = numeric(0),
   names(formulas) <- c("det", "state")
   if(any(sapply(formulas, has_random))) engine <- "TMB"
   if(length(knownOcc) > 0){
-    if(engine == "TMB"){
-      stop("TMB engine does not support knownOcc argument", call.=FALSE)
-    }
     if(any(knownOcc > numSites(data))){
       stop("Some knownOcc indices are too large", call.=FALSE)
     }
@@ -109,7 +106,8 @@ occu <- function(formula, data, knownOcc = numeric(0),
                              list(dm$X_det, dm$X_state), dm[c("Z_det","Z_state")])
 
     tmb_dat <- c(list(y=y, no_detect=nd, link=ifelse(linkPsi=="cloglog",1,0),
-                      offset_state=dm$offset_state, offset_det=dm$offset_det), inps$data)
+                      offset_state=dm$offset_state, offset_det=dm$offset_det,
+                      knownOcc = as.integer(knownOccLog)), inps$data)
 
     # Fit model with TMB
     if(missing(starts)) starts <- NULL

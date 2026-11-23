@@ -541,9 +541,11 @@ test_that("occu maps knownOcc to the correct sites", {
   fm_manual <- occu(~1 ~ x, umf[-2, ], knownOcc = 9)
   expect_equal(coef(fm), coef(fm_manual))
 
-  # R engine agrees with C engine
+  # R and TMB engines agree with C engine
   fmR <- fit_knownOcc_model(umf, engine = "R")
+  fmT <- fit_knownOcc_model(umf, engine = "TMB")
   expect_equal(coef(fm), coef(fmR), tol = 1e-5)
+  expect_equal(coef(fm), coef(fmT), tol = 1e-5)
 
   # Error if knownOcc index exceeds number of sites
   expect_error(occu(~1~x, umf, knownOcc = 31), "too large")

@@ -7,6 +7,7 @@ Type tmb_occu(objective_function<Type>* obj) {
   //Describe input data
   DATA_MATRIX(y); //observations
   DATA_VECTOR(no_detect); //Indicator for if site had no detections
+  DATA_IVECTOR(knownOcc); //Indicator for known occ = 1 at site
 
   DATA_INTEGER(link);
 
@@ -53,6 +54,9 @@ Type tmb_occu(objective_function<Type>* obj) {
 
   //Standard occupancy likelihood calculation
   for (int i=0; i<M; i++){
+    if(knownOcc(i)){
+      psi(i) = 1.0;
+    }
     int pind = i * J;
     Type cp = 1.0;
     for (int j=0; j<J; j++){
