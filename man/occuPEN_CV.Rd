@@ -13,7 +13,7 @@
     \item{formula}{Double right-hand side formula describing covariates of
         detection and occupancy in that order.}
     \item{data}{An \code{\link{unmarkedFrameOccu}} object}
-    \item{knownOcc}{Ignored; not currently supported by \code{occuPEN_CV}.}
+    \item{knownOcc}{Not currently supported by \code{occuPEN_CV}.}
     \item{starts}{Vector of parameter starting values.}
     \item{method}{Optimization method used by \code{\link{optim}}.}
     \item{engine}{Either "C" or "R" to use fast C++ code or native R
