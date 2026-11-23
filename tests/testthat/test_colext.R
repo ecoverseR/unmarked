@@ -86,7 +86,7 @@ test_that("colext model fitting works", {
   expect_true(is.null(fm4@smoothed.mean.bsse))
   npb <- nonparboot(fm4, B=2)
   expect_equal(length(npb@bootstrapSamples), 2)
-  expect_equal(npb@bootstrapSamples[[1]]@AIC, 19.6418, tol=1e-4)
+  expect_equal(npb@bootstrapSamples[[1]]@AIC, 52.27658, tol=1e-4)
   v <- vcov(npb, method='nonparboot')
   expect_equal(nrow(v), length(coef(npb)))
   expect_is(npb@projected.mean.bsse, "matrix")
@@ -94,7 +94,7 @@ test_that("colext model fitting works", {
    
   # parboot
   pb <- parboot(fm4, nsim=2)
-  expect_equal(pb@t.star[1,1], 10.2837, tol=1e-4)
+  expect_equal(pb@t.star[1,1], 5.972164, tol=1e-4)
 
   # getP
   gp <- getP(fm4)
