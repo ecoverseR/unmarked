@@ -34,6 +34,7 @@ occu <- function(formula, data, knownOcc = numeric(0),
   # convert knownOcc to logical so we can correctly to handle NAs.
   knownOccLog <- rep(FALSE, numSites(data))
   knownOccLog[knownOcc] <- TRUE
+  knownOccLog_all <- knownOccLog # Save full vector to store
   if(length(dm$removed.sites)>0) knownOccLog <- knownOccLog[-dm$removed.sites]
 
   # Set up parameter names and indices-----------------------------------------
@@ -152,7 +153,7 @@ occu <- function(formula, data, knownOcc = numeric(0),
                  sitesRemoved = dm$removed.sites,
                  estimates = estimateList, AIC = fmAIC, opt = fm,
                  negLogLike = fm$value,
-                 nllFun = nll, knownOcc = knownOccLog, TMB=tmb_mod)
+                 nllFun = nll, knownOcc = knownOccLog_all, TMB=tmb_mod)
 
   return(umfit)
 }

@@ -504,3 +504,132 @@ test_that("TMB engine gives correct det estimates when there are lots of NAs", {
   fitT <- occu(~x~1, umf, engine="TMB")
   expect_equal(coef(fit), coef(fitT), tol=1e-5)
 })
+
+# Check knownOcc handling with NAs
+# Shared test data
+# 30 sites, 4 occasions. Site 2 has a missing site covariate, so occu drops it.
+# Sites 9 and 10 have no detections, and site 10 is declared known-occupied.
+# Once site 2 is dropped, site 10 is the 9th site used in the fit, so code that
+# indexes all 30 sites with the stored (29-element) knownOcc vector flags
+# site 9 instead of site 10.
+make_knownOcc_data <- function(){
+  set.seed(456)
+  M <- 30
+  J <- 4
+  x <- rnorm(M)
+  z <- rbinom(M, 1, plogis(0.5 + 0.5 * x))
+  y <- matrix(rbinom(M * J, 1, 0.5), M, J) * z
+  y[9, ] <- 0
+  y[10, ] <- 0
+  x[2] <- NA
+  unmarkedFrameOccu(y = y, siteCovs = data.frame(x = x))
+}
+
+fit_knownOcc_model <- function(umf, ...){
+  suppressWarnings(occu(~1 ~ x, umf, knownOcc = 10, ...))
+}
+
+test_that("occu maps knownOcc to the correct site when earlier sites are removed", {
+  umf <- make_knownOcc_data()
+  expect_warning(fm <- occu(~1 ~ x, umf, knownOcc = 10), "dropped")
+
+  # One entry per site used in the fit, with site 10 now in position 9
+  expect_equal(length(fm@knownOcc), numSites(umf))
+  expect_equal(which(fm@knownOcc), 10)
+
+  # Same result as dropping site 2 by hand
+  fm_manual <- occu(~1 ~ x, umf[-2, ], knownOcc = 9)
+  expect_equal(coef(fm), coef(fm_manual))
+
+  # R engine agrees with C engine
+  fmR <- fit_knownOcc_model(umf, engine = "R")
+  expect_equal(coef(fm), coef(fmR), tol = 1e-5)
+})
+
+test_that("fitted() sets psi = 1 at the known-occupied site after site removal", {
+  umf <- make_knownOcc_data()
+  fm <- fit_knownOcc_model(umf)
+
+  psi <- predict(fm, type = "state", level = NULL, na.rm = FALSE)$Predicted
+  p <- getP(fm)
+  expected <- psi * p
+  expected[10, ] <- p[10, ]
+
+  ft <- fitted(fm)
+  expect_equal(dim(ft), dim(getY(umf)))
+  expect_equivalent(ft, expected)
+  # Site 9 is not known-occupied, so its fitted values are below p
+  expect_true(all(ft[9, ] < p[9, ]))
+})
+
+test_that("simulate() keeps the known-occupied site occupied after site removal", {
+  umf <- make_knownOcc_data()
+  fm <- fit_knownOcc_model(umf)
+
+  # Make psi ~ 0 and p ~ 1, so only the known-occupied site can have detections
+  fm@estimates@estimates$state@estimates[] <- c(-30, 0)
+  fm@estimates@estimates$det@estimates[] <- 30
+
+  # suppressWarnings: psi is NA at the dropped site 2
+  sims <- suppressWarnings(simulate(fm, nsim = 3))
+  for (s in sims){
+    expect_true(all(s[10, ] == 1))
+    expect_true(all(s[-c(2, 10), ] == 0))
+  }
+})
+
+test_that("update() refits with the same knownOcc when sites were removed", {
+  umf <- make_knownOcc_data()
+  fm <- fit_knownOcc_model(umf)
+
+  fm2 <- suppressWarnings(update(fm))
+  expect_equal(fm2@knownOcc, fm@knownOcc)
+  expect_equal(coef(fm2), coef(fm))
+})
+
+test_that("parboot refits keep knownOcc on the correct site", {
+  umf <- make_knownOcc_data()
+  fm <- fit_knownOcc_model(umf)
+
+  known_site <- function(fit) c(known = which(fit@knownOcc))
+  pb <- suppressWarnings(parboot(fm, statistic = known_site, nsim = 3))
+  expect_equivalent(pb@t0, 10)
+  expect_true(all(pb@t.star[, 1] == 10))
+})
+
+test_that("nonparboot refits carry knownOcc with the resampled sites", {
+  umf <- make_knownOcc_data()
+  fm <- fit_knownOcc_model(umf)
+
+  set.seed(1)
+  npb <- suppressWarnings(nonparboot(fm, B = 5))
+
+  # x is continuous, so it identifies which original site each bootstrap
+  # site was copied from
+  x_orig <- siteCovs(umf)$x
+  for (b in npb@bootstrapSamples){
+    x_boot <- siteCovs(b@data)$x
+    kept <- !is.na(x_boot)  # bootstrap copies of site 2 are dropped again
+    expected <- x_boot[kept] %in% x_orig[10]
+    expect_equal(b@knownOcc, expected)
+  }
+})
+
+test_that("ranef() gives P(z = 1) = 1 at the known-occupied site", {
+  umf <- make_knownOcc_data()
+  fm <- fit_knownOcc_model(umf)
+
+  r <- ranef(fm)
+  expect_equal(unname(r@post[10, "1", 1]), 1)
+  expect_equal(unname(bup(r)[10]), 1)
+})
+
+
+
+setMethod("subset_sites", c("unmarkedFrameOccu", "numericOrLogical"),
+  function(umf, i){
+  idx <- process_site_index(umf, i)
+  umf <- methods::callNextMethod(umf, i)
+  umf@knownOcc <- umf@knownOcc[idx]
+  umf
+})
