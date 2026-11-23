@@ -14,7 +14,9 @@
     \item{data}{An \code{\link{unmarkedFrameOccu}} object}
     \item{knownOcc}{Vector of sites that are known to be occupied. These
     should be supplied as row numbers of the y matrix, eg, c(3,8) if
-    sites 3 and 8 were known to be occupied a priori.}
+    sites 3 and 8 were known to be occupied a priori. You can also
+    supply a logical vector with length equal to the number of sites,
+    where \code{TRUE} for a site indicates known occupancy.}
     \item{linkPsi}{Link function for the occupancy model. Options are  
       \code{"logit"} for the standard occupancy model or \code{"cloglog"} 
       for the complimentary log-log link, which relates occupancy
