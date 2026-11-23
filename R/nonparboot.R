@@ -25,8 +25,8 @@ setMethod("nonparboot_internal", "unmarkedFit",
       ran <- TRUE
       tryCatch(fit <- nonparboot_update(object, data = new_data, sites = sites),
                error = function(e) ran <<- FALSE)
-      conv <- fit@opt$convergence == 0
-      if(ran & conv) finish <- TRUE
+      conv <- ran && fit@opt$convergence == 0
+      if(conv) finish <- TRUE
     }
     fit
   })
