@@ -37,7 +37,10 @@ occu <- function(formula, data, knownOcc = numeric(0),
   knownOccLog <- rep(FALSE, numSites(data))
   knownOccLog[knownOcc] <- TRUE
   knownOccLog_all <- knownOccLog # Save full vector to store in output object
-  stopifnot(length(knownOccLog_all) == numSites(data))
+  # If there are any known occ sites, make sure length = # of sites
+  if(any(na.omit(knownOccLog_all))){
+    stopifnot(length(knownOccLog_all) == numSites(data))
+  }
   if(length(dm$removed.sites)>0) knownOccLog <- knownOccLog[-dm$removed.sites]
 
   # Set up parameter names and indices-----------------------------------------
