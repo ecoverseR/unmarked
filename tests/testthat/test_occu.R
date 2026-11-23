@@ -529,21 +529,24 @@ fit_knownOcc_model <- function(umf, ...){
   suppressWarnings(occu(~1 ~ x, umf, knownOcc = 10, ...))
 }
 
-test_that("occu maps knownOcc to the correct site when earlier sites are removed", {
+test_that("occu maps knownOcc to the correct sites", {
   umf <- make_knownOcc_data()
+
   expect_warning(fm <- occu(~1 ~ x, umf, knownOcc = 10), "dropped")
 
-  # One entry per site used in the fit, with site 10 now in position 9
   expect_equal(length(fm@knownOcc), numSites(umf))
   expect_equal(which(fm@knownOcc), 10)
 
-  # Same result as dropping site 2 by hand
+  # Dropping site 2 by hand
   fm_manual <- occu(~1 ~ x, umf[-2, ], knownOcc = 9)
   expect_equal(coef(fm), coef(fm_manual))
 
   # R engine agrees with C engine
   fmR <- fit_knownOcc_model(umf, engine = "R")
   expect_equal(coef(fm), coef(fmR), tol = 1e-5)
+
+  # Error if knownOcc index exceeds number of sites
+  expect_error(occu(~1~x, umf, knownOcc = 31))
 })
 
 test_that("fitted() sets psi = 1 at the known-occupied site after site removal", {

@@ -13,8 +13,13 @@ occu <- function(formula, data, knownOcc = numeric(0),
   formulas <- split_formula(formula)
   names(formulas) <- c("det", "state")
   if(any(sapply(formulas, has_random))) engine <- "TMB"
-  if(length(knownOcc)>0 & engine == "TMB"){
-    stop("TMB engine does not support knownOcc argument", call.=FALSE)
+  if(length(knownOcc) > 0){
+    if(engine == "TMB"){
+      stop("TMB engine does not support knownOcc argument", call.=FALSE)
+    }
+    if(any(knownOcc > numSites(data))){
+      stop("Some knownOcc indices are too large", call.=FALSE)
+    }
   }
 
   linkPsi <- match.arg(linkPsi, c("logit","cloglog"))
@@ -34,7 +39,8 @@ occu <- function(formula, data, knownOcc = numeric(0),
   # convert knownOcc to logical so we can correctly to handle NAs.
   knownOccLog <- rep(FALSE, numSites(data))
   knownOccLog[knownOcc] <- TRUE
-  knownOccLog_all <- knownOccLog # Save full vector to store
+  knownOccLog_all <- knownOccLog # Save full vector to store in output object
+  stopifnot(length(knownOccLog_all) == numSites(data))
   if(length(dm$removed.sites)>0) knownOccLog <- knownOccLog[-dm$removed.sites]
 
   # Set up parameter names and indices-----------------------------------------
