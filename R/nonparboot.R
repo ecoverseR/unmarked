@@ -61,6 +61,12 @@ setMethod("nonparboot_update", "unmarkedFitOccu", function(object, data, sites, 
   update(object, data = data, se = FALSE, knownOcc = knownOcc)
 })
 
+# Make sure occuComm doesn't inherit the occu behavior above (as it otherwise would)
+# because occuComm does not support knownOcc
+setMethod("nonparboot_update", "unmarkedFitOccuComm", function(object, data, ...){
+  update(object, data = data, se = FALSE)
+})
+
 # occuPEN handling
 setMethod("nonparboot_update", "unmarkedFitOccuPEN", function(object, data, ...){
   update(object, data = data)

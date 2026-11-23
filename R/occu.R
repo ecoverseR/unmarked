@@ -13,11 +13,9 @@ occu <- function(formula, data, knownOcc = numeric(0),
   formulas <- split_formula(formula)
   names(formulas) <- c("det", "state")
   if(any(sapply(formulas, has_random))) engine <- "TMB"
-  if(length(knownOcc) > 0){
-    if(any(knownOcc > numSites(data))){
-      stop("Some knownOcc indices are too large", call.=FALSE)
-    }
-  }
+
+  # Check format of knownOcc
+  knownOccLog <- check_knownOcc(knownOcc, data)
 
   linkPsi <- match.arg(linkPsi, c("logit","cloglog"))
   psiLinkFunc <- ifelse(linkPsi=="cloglog", cloglog, plogis)
@@ -32,16 +30,10 @@ occu <- function(formula, data, knownOcc = numeric(0),
   yvec <- as.numeric(t(y))
   navec <- is.na(yvec)
   nd <- ifelse(rowSums(y,na.rm=TRUE) == 0, 1, 0) # no det at site i
-
-  # convert knownOcc to logical so we can correctly to handle NAs.
-  knownOccLog <- rep(FALSE, numSites(data))
-  knownOccLog[knownOcc] <- TRUE
-  knownOccLog_all <- knownOccLog # Save full vector to store in output object
-  # If there are any known occ sites, make sure length = # of sites
-  if(any(na.omit(knownOccLog_all))){
-    stopifnot(length(knownOccLog_all) == numSites(data))
+  knownOccLog_drop <- knownOccLog
+  if(length(dm$removed.sites)>0){
+    knownOccLog_drop <- knownOccLog[-dm$removed.sites]
   }
-  if(length(dm$removed.sites)>0) knownOccLog <- knownOccLog[-dm$removed.sites]
 
   # Set up parameter names and indices-----------------------------------------
   occParms <- colnames(dm$X_state)
@@ -58,8 +50,8 @@ occu <- function(formula, data, knownOcc = numeric(0),
       beta.psi <- params[1:nOP]
       beta.p <- params[(nOP+1):nP]
       nll_occu(
-        yvec, dm$X_state, dm$X_det, beta.psi, beta.p, nd, knownOccLog, navec,
-        dm$offset_state, dm$offset_det, linkPsi
+        yvec, dm$X_state, dm$X_det, beta.psi, beta.p, nd, knownOccLog_drop,
+        navec, dm$offset_state, dm$offset_det, linkPsi
       )
     }
   } else if (identical(engine, "R")){
@@ -69,7 +61,7 @@ occu <- function(formula, data, knownOcc = numeric(0),
 
     nll <- function(params) {
       psi <- psiLinkFunc(dm$X_state %*% params[1 : nOP] + dm$offset_state)
-      psi[knownOccLog] <- 1
+      psi[knownOccLog_drop] <- 1
       pvec <- plogis(dm$X_det %*% params[(nOP + 1) : nP] + dm$offset_det)
       cp <- (pvec^yvec) * ((1 - pvec)^(1 - yvec))
       cp[navec] <- 1 # so that NA's don't modify likelihood
@@ -110,7 +102,7 @@ occu <- function(formula, data, knownOcc = numeric(0),
 
     tmb_dat <- c(list(y=y, no_detect=nd, link=ifelse(linkPsi=="cloglog",1,0),
                       offset_state=dm$offset_state, offset_det=dm$offset_det,
-                      knownOcc = as.integer(knownOccLog)), inps$data)
+                      knownOcc = as.integer(knownOccLog_drop)), inps$data)
 
     # Fit model with TMB
     if(missing(starts)) starts <- NULL
@@ -160,7 +152,40 @@ occu <- function(formula, data, knownOcc = numeric(0),
                  sitesRemoved = dm$removed.sites,
                  estimates = estimateList, AIC = fmAIC, opt = fm,
                  negLogLike = fm$value,
-                 nllFun = nll, knownOcc = knownOccLog_all, TMB=tmb_mod)
+                 nllFun = nll, knownOcc = knownOccLog, TMB=tmb_mod)
 
   return(umfit)
+}
+
+# Check knownOcc input and return logical vector
+check_knownOcc <- function(knownOcc, data){
+  if(is.numeric(knownOcc)){
+    if(length(knownOcc) > 0){
+      if(!all(knownOcc %in% 1:numSites(data))){
+        stop("Some knownOcc site indices are invalid", call.=FALSE)
+      }
+    }
+    knownOccLog <- rep(FALSE, numSites(data))
+    knownOccLog[knownOcc] <- TRUE
+
+    # this mostly happens when updating a saved model object
+    # and passing the knownOcc slot to the knownOcc argument
+  } else if(is.logical(knownOcc)){
+    knownOccLog <- knownOcc
+    # Check if knownOcc logical vector is the correct length
+    if(length(knownOccLog) != numSites(data)){
+      # If there are no known occs anyway, just correct the vector length
+      if(!any(na.omit(knownOccLog))){
+        knownOccLog <- rep(FALSE, numSites(data))
+      } else {
+        stop("Some sites have known occ but the logical vector is the wrong length",
+             call.=FALSE)
+      }
+    }
+  } else {
+    stop("knownOcc must be either a vector of site indices or a logical vector with length equal to the number of sites",
+         call.=FALSE)
+  }
+
+  knownOccLog
 }

@@ -122,9 +122,7 @@ setMethod("rebuild_call", "unmarkedFitNmixTTD", function(object){
 setMethod("rebuild_call", "unmarkedFitOccu", function(object){ 
   cl <- methods::callNextMethod(object)
   cl[["formula"]] <- object@formula
-  if(is.null(object@TMB)){
-    cl[["knownOcc"]] <- quote(object@knownOcc)
-  }
+  cl[["knownOcc"]] <- quote(object@knownOcc)
   cl
 })
 

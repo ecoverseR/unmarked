@@ -548,7 +548,23 @@ test_that("occu maps knownOcc to the correct sites", {
   expect_equal(coef(fm), coef(fmT), tol = 1e-5)
 
   # Error if knownOcc index exceeds number of sites
-  expect_error(occu(~1~x, umf, knownOcc = 31), "too large")
+  expect_error(occu(~1~x, umf, knownOcc = 31), "invalid")
+  # Error if knownOcc index is negative
+  expect_error(occu(~1~x, umf, knownOcc = -3), "invalid")
+  # Test handling logical vector as knownOcc
+  ko <- rep(FALSE, numSites(umf))
+  # This should work because ko has correct length
+  expect_warning(occu(~1~x, umf, knownOcc = ko))
+  ko2 <- ko[-1]
+  # This should also work because all knownOcc is false
+  expect_warning(occu(~1~x, umf, knownOcc = ko2))
+  ko3 <- ko[-1]
+  ko3[1] <- TRUE
+  # Should error because wrong length and there is a known occ
+  expect_error(occu(~1~x, umf, knownOcc = ko3), "wrong length")
+  
+  # Should error because wrong class supplied to knownOcc
+  expect_error(occu(~1~x, umf, knownOcc = "test"), "must be either")
 
   # crossVal doesn't work with knownOcc
   expect_error(crossVal(fm), "doesn't support")

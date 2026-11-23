@@ -9,12 +9,6 @@ computeMPLElambda = function(formula, data, knownOcc = numeric(0), starts, metho
   removed <- designMats$removed.sites
   y <- truncateToBinary(y)
 
-  ## convert knownOcc to logical so we can correctly to handle NAs.
-  knownOccLog <- rep(FALSE, numSites(data))
-  knownOccLog[knownOcc] <- TRUE
-  if(length(removed)>0)
-     knownOccLog <- knownOccLog[-removed]
-
   nDP <- ncol(X_det)
   nOP <- ncol(X_state)
   nP <- nDP + nOP
@@ -83,14 +77,14 @@ occuPEN_CV <- function(formula, data, knownOcc = numeric(0), starts,
           beta.psi <- params[1:nOP]
           beta.p <- params[(nOP+1):nP]
           nll_occu(
-                  yvec, X_state, X_det, beta.psi, beta.p, nd, knownOccLog, navec,
+                  yvec, X_state, X_det, beta.psi, beta.p, nd, knownOccLog_drop, navec,
                   offset_state, offset_det, "logit"
           )
       }
   } else {
     nll <- function(params) { # penalize this function
         psi <- plogis(X_state %*% params[1 : nOP] + offset_state)
-        psi[knownOccLog] <- 1
+        psi[knownOccLog_drop] <- 1
         pvec <- plogis(X_det %*% params[(nOP + 1) : nP] + offset_det)
         cp <- (pvec^yvec) * ((1 - pvec)^(1 - yvec))
         cp[navec] <- 1 # so that NA's don't modify likelihood
@@ -116,11 +110,21 @@ occuPEN_CV <- function(formula, data, knownOcc = numeric(0), starts,
     J <- ncol(y)
     M <- nrow(y)
 
-    ## convert knownOcc to logical so we can correctly to handle NAs.
+    # Check if knownOcc info provided
+    ko_info <- FALSE
+    if(is.numeric(knownOcc)){
+      if(!identical(knownOcc, numeric(0))) ko_info <- TRUE
+    } else if(is.logical(knownOcc)){
+      if(any(na.omit(knownOcc))) ko_info <- TRUE
+    }
+    if(ko_info){
+      stop("knownOcc not supported by occuPEN", call.=FALSE)
+    }
     knownOccLog <- rep(FALSE, numSites(data))
-    knownOccLog[knownOcc] <- TRUE
-    if(length(removed)>0)
-        knownOccLog <- knownOccLog[-removed]
+    knownOccLog_drop <- knownOccLog
+    if(length(removed)>0){
+      knownOccLog_drop <- knownOccLog[-removed]
+    }
 
     occParms <- colnames(X_state)
     detParms <- colnames(X_det)
@@ -139,7 +143,7 @@ occuPEN_CV <- function(formula, data, knownOcc = numeric(0), starts,
     # For each lambda, get parameters on the training set, and use them
     #  to compute the likelihood on the held-out test fold.
     for (la in 1:length(lambdaVec)) {
-      occuOut = occuPEN(formula, occuTrain, starts, lambda=lambdaVec[la],pen.type=pen.type)
+      occuOut = occuPEN(formula, occuTrain, starts=starts, lambda=lambdaVec[la],pen.type=pen.type)
       ests = c(as.numeric(occuOut[1]@estimates),as.numeric(occuOut[2]@estimates))
       lambdaScores[la] = lambdaScores[la] + nll(ests)
     } # la
@@ -200,11 +204,21 @@ occuPEN <- function(formula, data, knownOcc = numeric(0), starts,
     J <- ncol(y)
     M <- nrow(y)
 
-    ## convert knownOcc to logical so we can correctly to handle NAs.
+    # Check if knownOcc info provided
+    ko_info <- FALSE
+    if(is.numeric(knownOcc)){
+      if(!identical(knownOcc, numeric(0))) ko_info <- TRUE
+    } else if(is.logical(knownOcc)){
+      if(any(na.omit(knownOcc))) ko_info <- TRUE
+    }
+    if(ko_info){
+      stop("knownOcc not supported by occuPEN", call.=FALSE)
+    }
     knownOccLog <- rep(FALSE, numSites(data))
-    knownOccLog[knownOcc] <- TRUE
-    if(length(removed)>0)
-        knownOccLog <- knownOccLog[-removed]
+    knownOccLog_drop <- knownOccLog
+    if(length(removed)>0){
+      knownOccLog_drop <- knownOccLog[-removed]
+    }
 
     occParms <- colnames(X_state)
     detParms <- colnames(X_det)
@@ -248,13 +262,13 @@ occuPEN <- function(formula, data, knownOcc = numeric(0), starts,
 	    } else {
 	      stop("pen.type not found")
 	    }
-        nll_occuPEN(yvec, X_state, X_det, beta.psi, beta.p, nd, knownOccLog, navec,
+        nll_occuPEN(yvec, X_state, X_det, beta.psi, beta.p, nd, knownOccLog_drop, navec,
                     offset_state, offset_det, penalty)
       }
     } else {
       nll <- function(params) { # penalize this function
           psi <- plogis(X_state %*% params[1 : nOP] + offset_state)
-          psi[knownOccLog] <- 1
+          psi[knownOccLog_drop] <- 1
           pvec <- plogis(X_det %*% params[(nOP + 1) : nP] + offset_det)
           cp <- (pvec^yvec) * ((1 - pvec)^(1 - yvec))
           cp[navec] <- 1 # so that NA's don't modify likelihood
