@@ -263,6 +263,7 @@ setMethod("ranef_internal", "unmarkedFitDS", function(object, ...){
 
 setMethod("ranef_internal", "unmarkedFitOccu", function(object, ...){
     psi <- predict(object, type="state", level=NULL, na.rm=FALSE)$Predicted
+    psi[object@knownOcc] <- 1
     R <- length(psi)
     p <- getP(object)
     z <- 0:1
