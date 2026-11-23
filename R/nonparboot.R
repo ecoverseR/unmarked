@@ -23,7 +23,7 @@ setMethod("nonparboot_internal", "unmarkedFit",
       sites <- sort(sample(1:M, M, replace=TRUE))
       new_data <- object@data[sites,]
       ran <- TRUE
-      tryCatch(fit <- nonparboot_update(object, data = new_data),
+      tryCatch(fit <- nonparboot_update(object, data = new_data, sites = sites),
                error = function(e) ran <<- FALSE)
       conv <- object@opt$convergence == 0
       if(ran & conv) finish <- TRUE
@@ -50,16 +50,23 @@ setMethod("nonparboot_internal", "unmarkedFit",
   object
 })
 
-# Fit-specific update methods (to handle occuPEN)
-setMethod("nonparboot_update", "unmarkedFit", function(object, data){
+# Fit-specific update methods
+setMethod("nonparboot_update", "unmarkedFit", function(object, data, ...){
   update(object, data = data, se = FALSE)
 })
 
-setMethod("nonparboot_update", "unmarkedFitOccuPEN", function(object, data){
+# Make sure knownOcc is carried over when sites are resampled
+setMethod("nonparboot_update", "unmarkedFitOccu", function(object, data, sites, ...){
+  knownOcc <- object@knownOcc[sites] 
+  update(object, data = data, se = FALSE, knownOcc = knownOcc)
+})
+
+# occuPEN handling
+setMethod("nonparboot_update", "unmarkedFitOccuPEN", function(object, data, ...){
   update(object, data = data)
 })
 
-setMethod("nonparboot_update", "unmarkedFitOccuPEN_CV", function(object, data){
+setMethod("nonparboot_update", "unmarkedFitOccuPEN_CV", function(object, data, ...){
   if(object@pen.type == "MPLE"){
 	  MPLElambda <- computeMPLElambda(object@formula, data)
     out <- update(object, data = data, lambda = MPLElambda)

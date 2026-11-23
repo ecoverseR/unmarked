@@ -266,7 +266,7 @@ setGeneric("nonparboot_internal", function(object, B, keepOldSamples){
 
 # Internal nonparboot update method for specific unmarkedFit types
 # Methods in nonparboot.R
-setGeneric("nonparboot_update", function(object, data){
+setGeneric("nonparboot_update", function(object, data, ...){
   standardGeneric("nonparboot_update")
 })
 

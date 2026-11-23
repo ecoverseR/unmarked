@@ -604,13 +604,12 @@ test_that("nonparboot refits carry knownOcc with the resampled sites", {
   set.seed(1)
   npb <- suppressWarnings(nonparboot(fm, B = 5))
 
-  # x is continuous, so it identifies which original site each bootstrap
-  # site was copied from
+  # use x value to identify which original site the bootstrap sample came from
+  # and check that the updated knownOcc matches
   x_orig <- siteCovs(umf)$x
   for (b in npb@bootstrapSamples){
     x_boot <- siteCovs(b@data)$x
-    kept <- !is.na(x_boot)  # bootstrap copies of site 2 are dropped again
-    expected <- x_boot[kept] %in% x_orig[10]
+    expected <- x_boot %in% x_orig[10]
     expect_equal(b@knownOcc, expected)
   }
 })
@@ -622,14 +621,4 @@ test_that("ranef() gives P(z = 1) = 1 at the known-occupied site", {
   r <- ranef(fm)
   expect_equal(unname(r@post[10, "1", 1]), 1)
   expect_equal(unname(bup(r)[10]), 1)
-})
-
-
-
-setMethod("subset_sites", c("unmarkedFrameOccu", "numericOrLogical"),
-  function(umf, i){
-  idx <- process_site_index(umf, i)
-  umf <- methods::callNextMethod(umf, i)
-  umf@knownOcc <- umf@knownOcc[idx]
-  umf
 })
