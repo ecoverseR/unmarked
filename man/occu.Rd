@@ -26,10 +26,7 @@
     \item{engine}{Code to use for optimization. Either "C" for fast C++ code,
       "R" for native R code, or "TMB" for Template Model Builder. "TMB" is
       used automatically if your formula contains random effects.}
-    \item{threads}{Set the number of threads to use for optimization in C++, if
-      OpenMP is available on your system. Increasing the number of threads
-      may speed up optimization in some cases by running the likelihood 
-      calculation in parallel. If \code{threads=1} (the default), OpenMP is disabled.} 
+    \item{threads}{Currently unused.} 
     \item{\dots}{Additional arguments to optim, such as lower and upper
       bounds}
   }
