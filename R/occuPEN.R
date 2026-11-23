@@ -113,7 +113,7 @@ occuPEN_CV <- function(formula, data, knownOcc = numeric(0), starts,
     # Check if knownOcc info provided
     ko_info <- FALSE
     if(is.numeric(knownOcc)){
-      if(!identical(knownOcc, numeric(0))) ko_info <- TRUE
+      if(length(knownOcc) > 0) ko_info <- TRUE
     } else if(is.logical(knownOcc)){
       if(any(na.omit(knownOcc))) ko_info <- TRUE
     }
@@ -207,7 +207,7 @@ occuPEN <- function(formula, data, knownOcc = numeric(0), starts,
     # Check if knownOcc info provided
     ko_info <- FALSE
     if(is.numeric(knownOcc)){
-      if(!identical(knownOcc, numeric(0))) ko_info <- TRUE
+      if(length(knownOcc) > 0) ko_info <- TRUE
     } else if(is.logical(knownOcc)){
       if(any(na.omit(knownOcc))) ko_info <- TRUE
     }

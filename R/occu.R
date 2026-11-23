@@ -172,6 +172,8 @@ check_knownOcc <- function(knownOcc, data){
     # and passing the knownOcc slot to the knownOcc argument
   } else if(is.logical(knownOcc)){
     knownOccLog <- knownOcc
+    # For engine compatability
+    knownOccLog[is.na(knownOccLog)] <- FALSE
     # Check if knownOcc logical vector is the correct length
     if(length(knownOccLog) != numSites(data)){
       # If there are no known occs anyway, just correct the vector length
